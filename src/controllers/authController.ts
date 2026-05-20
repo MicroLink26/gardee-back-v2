@@ -110,3 +110,24 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
   await record.save();
   res.json({ ok: true });
 }
+
+export async function changePassword(req: AuthRequest, res: Response): Promise<void> {
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: 'Champs requis manquants' });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+    return;
+  }
+  const user = req.user!;
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash!);
+  if (!valid) {
+    res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+    return;
+  }
+  user.passwordHash = await bcrypt.hash(newPassword, 12);
+  await user.save();
+  res.json({ ok: true });
+}
