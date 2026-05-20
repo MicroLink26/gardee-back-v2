@@ -10,7 +10,7 @@ import { AuthRequest } from '../types';
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: process.env.NODE_ENV !== 'development',
   sameSite: 'none' as const,
   maxAge: parseInt(process.env.REFRESH_TTL_DAYS ?? '30', 10) * 86400 * 1000,
 };
