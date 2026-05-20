@@ -21,11 +21,13 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:4321',  // Astro frontend dev
+  'http://localhost:4322',  // Astro frontend dev (Docker)
   'http://localhost:5173',  // Vue dev
   'http://localhost:8081',  // Expo mobile dev
   'https://gardee.fr',
   'https://www.gardee.fr',
   'https://account.gardee.fr',
+  'https://v2.gardee.fr',
 ];
 
 app.use(cors({

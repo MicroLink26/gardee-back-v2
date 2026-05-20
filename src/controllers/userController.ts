@@ -174,13 +174,13 @@ export async function getRanking(req: Request, res: Response): Promise<void> {
   const { prestation, ville, page = '1', pageSize = '20' } = req.query as Record<string, string>;
   const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
-  const filter: Record<string, unknown> = { role: 'prestataire', is_validated: true, numberOfReviews: { $gt: 0 } };
-  if (prestation) filter.prestations = new RegExp(prestation, 'i');
+  const filter: Record<string, unknown> = { role: 'prestataire', is_validated: true };
+  if (prestation) filter.prestations = prestation;
   if (ville) filter.ville = new RegExp(ville, 'i');
 
   const [items, total] = await Promise.all([
     User.find(filter)
-      .select('nom prenom ville prestations tarifHoraire profil_image averageRating numberOfReviews')
+      .select('nom prenom ville prestations tarifHoraire profil_image averageRating numberOfReviews location')
       .sort({ averageRating: -1, numberOfReviews: -1 })
       .skip(skip)
       .limit(parseInt(pageSize)),
