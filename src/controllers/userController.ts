@@ -13,7 +13,11 @@ const PRESTATAIRE_EDITABLE_FIELDS = [
   'materielOK', 'isEntrepreneur', 'siret', 'qualifElagage', 'consentDataProcessing',
 ];
 
-const CLIENT_EDITABLE_FIELDS = ['nom', 'prenom', 'telephone', 'consentDataProcessing'];
+const CLIENT_EDITABLE_FIELDS = [
+  'email', 'nom', 'prenom', 'telephone', 'adresse', 'codePostal', 'ville',
+  'prestations', 'tarifHoraire', 'description', 'materielOK', 'isEntrepreneur',
+  'siret', 'qualifElagage', 'contactCom', 'consentDataProcessing',
+];
 
 export async function registerPrestataire(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>;
@@ -150,20 +154,35 @@ export async function getPublicProfile(req: Request, res: Response): Promise<voi
 }
 
 export async function searchPrestataires(req: Request, res: Response): Promise<void> {
-  const { q, page = '1', pageSize = '20' } = req.query as Record<string, string>;
+  const { q, page = '1', pageSize = '20', sort, lat, lng } = req.query as Record<string, string>;
   const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
   const filter: Record<string, unknown> = { role: 'prestataire', is_validated: true };
+
+  if (sort === 'distance' && lat && lng) {
+    filter.location = {
+      $near: {
+        $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+      },
+    };
+  }
+
   if (q) {
     const regex = new RegExp(q, 'i');
     filter.$or = [{ nom: regex }, { prenom: regex }, { ville: regex }, { prestations: regex }];
   }
 
+  let mongoSort: Record<string, number> | undefined;
+  if (sort === 'rating') mongoSort = { averageRating: -1, numberOfReviews: -1 };
+  else if (sort === 'price_asc') mongoSort = { tarifHoraire: 1 };
+
+  const baseQuery = User.find(filter)
+    .select('nom prenom ville prestations tarifHoraire profil_image averageRating numberOfReviews location');
+
+  if (mongoSort) baseQuery.sort(mongoSort);
+
   const [items, total] = await Promise.all([
-    User.find(filter)
-      .select('nom prenom ville prestations tarifHoraire profil_image averageRating numberOfReviews location')
-      .skip(skip)
-      .limit(parseInt(pageSize)),
+    baseQuery.skip(skip).limit(parseInt(pageSize)),
     User.countDocuments(filter),
   ]);
 
