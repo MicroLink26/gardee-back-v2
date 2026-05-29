@@ -33,12 +33,9 @@ export async function updateMissingGeocoding(limit = 100): Promise<number> {
 export async function geocodeMissingVilleOnly(limit = 100): Promise<number> {
   const users = await User.find({
     role: 'prestataire',
-    location: { $exists: false },
-    ville: { $exists: true },
-    $or: [
-      { geocodeStatus: 'not_found' },
-      { geocodeStatus: 'pending', adresse: { $exists: false } },
-    ],
+    location: null,
+    ville: { $exists: true, $ne: '' },
+    geocodeStatus: { $in: ['error', 'not_found', 'pending'] },
   }).limit(limit);
 
   let count = 0;
