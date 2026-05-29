@@ -34,7 +34,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   const refreshToken = await createRefreshToken(user._id);
 
   res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
-  res.json({ user: { id: user._id, email: user.email, nom: user.nom, prenom: user.prenom, role: user.role }, accessToken });
+  res.json({ user: { _id: user._id, email: user.email, nom: user.nom, prenom: user.prenom, role: user.role }, accessToken });
 }
 
 export async function refresh(req: Request, res: Response): Promise<void> {
