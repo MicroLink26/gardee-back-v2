@@ -30,15 +30,17 @@ export async function updateMissingGeocoding(limit = 100): Promise<number> {
   return count;
 }
 
-export async function geocodeMissingVilleOnly(limit = 100): Promise<number> {
-  const users = await User.find({
+export async function geocodeMissingVilleOnly(limit = 100): Promise<{ villeGeocoded: number; debugCount: number }> {
+  const query = {
     role: 'prestataire',
-    location: null,
     ville: { $exists: true, $ne: '' },
     geocodeStatus: { $in: ['error', 'not_found', 'pending'] },
-  }).limit(limit);
+    $or: [{ location: null }, { location: { $exists: false } }, { 'location.coordinates': { $exists: false } }],
+  };
+  const debugCount = await User.countDocuments(query);
+  const users = await User.find(query).limit(limit);
 
-  let count = 0;
+  let villeGeocoded = 0;
   for (const user of users) {
     const result = await geocodeAddress(undefined, undefined, user.ville);
     if (result) {
@@ -46,10 +48,10 @@ export async function geocodeMissingVilleOnly(limit = 100): Promise<number> {
       user.geocodeStatus = 'ok';
       user.geocodedAt = new Date();
       await user.save();
-      count++;
+      villeGeocoded++;
     }
   }
-  return count;
+  return { villeGeocoded, debugCount };
 }
 
 export async function sendUpcomingReminders(): Promise<number> {
