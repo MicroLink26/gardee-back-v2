@@ -8,14 +8,13 @@ router.get('/daily', async (req: Request, res: Response) => {
     res.status(401).json({ error: 'Non autorisé' });
     return;
   }
-  const [geocoded, villeResult, reminders, ratings] = await Promise.all([
+  const [geocoded, villeGeocoded, reminders, ratings] = await Promise.all([
     updateMissingGeocoding(100),
     geocodeMissingVilleOnly(100),
     sendUpcomingReminders(),
     sendRatingRequests(),
   ]);
-  const { villeGeocoded, debugCount } = villeResult;
-  res.json({ ok: true, geocoded, villeGeocoded, debugCount, reminders, ratings });
+  res.json({ ok: true, geocoded, villeGeocoded, reminders, ratings });
 });
 
 export default router;
