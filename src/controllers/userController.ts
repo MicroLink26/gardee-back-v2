@@ -172,7 +172,7 @@ export async function searchPrestataires(req: Request, res: Response): Promise<v
     filter.$or = [{ nom: regex }, { prenom: regex }, { ville: regex }, { prestations: regex }];
   }
 
-  let mongoSort: Record<string, number> | undefined;
+  let mongoSort: Record<string, 1 | -1> | undefined;
   if (sort === 'rating') mongoSort = { averageRating: -1, numberOfReviews: -1 };
   else if (sort === 'price_asc') mongoSort = { tarifHoraire: 1 };
 

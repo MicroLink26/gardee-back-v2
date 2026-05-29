@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { updateMissingGeocoding, sendUpcomingReminders, sendRatingRequests } from '../services/cronService';
+import { updateMissingGeocoding, geocodeMissingVilleOnly, sendUpcomingReminders, sendRatingRequests } from '../services/cronService';
 
 const router = Router();
 
@@ -8,12 +8,13 @@ router.get('/daily', async (req: Request, res: Response) => {
     res.status(401).json({ error: 'Non autorisé' });
     return;
   }
-  const [geocoded, reminders, ratings] = await Promise.all([
+  const [geocoded, villeGeocoded, reminders, ratings] = await Promise.all([
     updateMissingGeocoding(100),
+    geocodeMissingVilleOnly(100),
     sendUpcomingReminders(),
     sendRatingRequests(),
   ]);
-  res.json({ ok: true, geocoded, reminders, ratings });
+  res.json({ ok: true, geocoded, villeGeocoded, reminders, ratings });
 });
 
 export default router;
