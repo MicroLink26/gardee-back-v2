@@ -224,7 +224,7 @@ export async function getReviews(req: Request, res: Response): Promise<void> {
   const filter = { prestataireId: id, 'ratingDetails': { $exists: true } };
   const [items, total] = await Promise.all([
     ServiceRequest.find(filter)
-      .select('ratingDetails ratingComment recommend ratingGivenAt desiredAt prestations')
+      .select('ratingDetails ratingComment recommend ratingGivenAt desiredAt prestations requesterPrenom requesterNom')
       .sort({ ratingGivenAt: -1 })
       .skip(skip)
       .limit(parseInt(pageSize)),
