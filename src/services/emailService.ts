@@ -40,7 +40,9 @@ export async function sendRequestToProvider(
     prestataire.email,
     'Nouvelle demande de service',
     `<p>Bonjour ${prestataire.prenom},</p>
-    <p>Vous avez reçu une nouvelle demande de service de la part de <strong>${request.requesterEmail}</strong>.</p>
+    <p>Vous avez reçu une nouvelle demande de service de la part de <strong>${request.requesterPrenom ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim() : request.requesterEmail}</strong>.</p>
+    <p>Email : ${request.requesterEmail}</p>
+    ${request.address ? `<p>Adresse du chantier : <strong>${request.address}</strong></p>` : ''}
     <p>Services demandés : ${request.prestations.join(', ')}</p>
     ${request.desiredAt ? `<p>Date souhaitée : ${new Date(request.desiredAt).toLocaleDateString('fr-FR')}</p>` : ''}
     ${request.description ? `<p>Description : ${request.description}</p>` : ''}
