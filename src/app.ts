@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { version } from '../package.json';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -55,7 +56,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/cron', cronRoutes);
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, version: '2.0.0' }));
+const BUILD_DATE = new Date().toISOString();
+app.get('/api/health', (_req, res) => res.json({ ok: true, version, buildDate: BUILD_DATE }));
 
 app.use(notFound);
 app.use(errorHandler);
