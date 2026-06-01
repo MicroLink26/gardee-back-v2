@@ -3,7 +3,7 @@ import { IServiceRequest } from '../models/ServiceRequest';
 import { IUser } from '../models/User';
 
 const FRONT_URL = () => process.env.FRONT_URL ?? 'https://gardee.fr';
-const APP_URL = () => process.env.APP_URL ?? 'https://account.gardee.fr';
+const APP_URL = () => process.env.APP_URL ?? 'https://gardee.fr';
 
 export async function sendWelcomeEmail(user: IUser): Promise<void> {
   await sendMail(
@@ -20,7 +20,7 @@ export async function sendRequestConfirmationEmail(
   token: string,
   prestataire: IUser
 ): Promise<void> {
-  const link = `${APP_URL()}/requests/confirm?token=${token}`;
+  const link = `${APP_URL()}/app/requests/confirm?token=${token}`;
   await sendMail(
     to,
     'Confirmez votre demande de service',
@@ -46,7 +46,7 @@ export async function sendRequestToProvider(
     <p>Services demandés : ${request.prestations.join(', ')}</p>
     ${request.desiredAt ? `<p>Date souhaitée : ${new Date(request.desiredAt).toLocaleDateString('fr-FR')}</p>` : ''}
     ${request.description ? `<p>Description : ${request.description}</p>` : ''}
-    <p>Connectez-vous à votre espace pour répondre : <a href="${APP_URL()}/mes-demandes">${APP_URL()}/mes-demandes</a></p>
+    <p>Connectez-vous à votre espace pour répondre : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
     <p>L'équipe Gardee</p>`
   );
 }
@@ -102,7 +102,7 @@ export async function sendRatingRequestEmail(
   request: IServiceRequest,
   prestataire: IUser
 ): Promise<void> {
-  const link = `${APP_URL()}/requests/rate?token=${request.ratingToken}`;
+  const link = `${APP_URL()}/app/requests/rate?token=${request.ratingToken}`;
   await sendMail(
     request.requesterEmail,
     'Comment s\'est passée votre prestation ?',
@@ -129,7 +129,7 @@ export async function sendUpcomingReminderEmail(
 }
 
 export async function sendForgotPasswordEmail(to: string, token: string): Promise<void> {
-  const link = `${APP_URL()}/reset-password?token=${token}`;
+  const link = `${APP_URL()}/app/forgot-password?token=${token}`;
   await sendMail(
     to,
     'Réinitialisation de votre mot de passe',
