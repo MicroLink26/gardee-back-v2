@@ -1,6 +1,6 @@
 {
   "name": "gardee-backend",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Gardee API v2 - Express + TypeScript + MongoDB",
   "main": "dist/app.js",
   "scripts": {
