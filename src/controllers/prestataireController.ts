@@ -225,6 +225,7 @@ export async function getRanking(req: Request, res: Response): Promise<void> {
       profil_image: p.profil_image,
       averageRating: p.averageRating,
       numberOfReviews: p.numberOfReviews,
+      location: p.location,
     };
   });
 
