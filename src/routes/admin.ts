@@ -8,6 +8,7 @@ router.use(isConnected, isStaff);
 
 router.get('/users', admin.listUsers);
 router.get('/pending', admin.listPendingPrestataires);
+router.get('/insights', admin.getInsights);
 
 // Backward compat + new route
 router.post('/validate/:id', admin.validatePrestataire);

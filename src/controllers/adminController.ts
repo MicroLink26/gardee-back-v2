@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
+import { ServiceRequest } from '../models/ServiceRequest';
 import { AuthRequest, UserRole } from '../types';
 
 function buildUserFilter(query: Record<string, string>) {
@@ -92,4 +93,54 @@ export async function deleteUser(req: AuthRequest, res: Response): Promise<void>
   }
   await Prestataire.deleteOne({ userId: req.params.id });
   res.json({ ok: true });
+}
+
+export async function getInsights(req: AuthRequest, res: Response): Promise<void> {
+  const days = Math.min(parseInt((req.query as Record<string, string>).days ?? '30'), 365);
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  // Granularité : daily ≤ 30j, weekly ≤ 90j, sinon monthly
+  const granularity = days <= 30 ? 'day' : days <= 90 ? 'week' : 'month';
+  const dateFormat = granularity === 'day' ? '%Y-%m-%d' : granularity === 'week' ? '%Y-%U' : '%Y-%m';
+
+  const [
+    totalUsers,
+    totalPrestataires,
+    pendingPrestataires,
+    totalRequests,
+    completedRequests,
+    usersSeries,
+    requestsSeries,
+    requestsByStatus,
+  ] = await Promise.all([
+    User.countDocuments(),
+    Prestataire.countDocuments({ is_validated: true }),
+    Prestataire.countDocuments({ is_validated: false }),
+    ServiceRequest.countDocuments(),
+    ServiceRequest.countDocuments({ status: 'completed' }),
+    User.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      { $group: { _id: { $dateToString: { format: dateFormat, date: '$createdAt' } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+    ServiceRequest.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      { $group: { _id: { $dateToString: { format: dateFormat, date: '$createdAt' } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]),
+    ServiceRequest.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  res.json({
+    kpis: { totalUsers, totalPrestataires, pendingPrestataires, totalRequests, completedRequests },
+    granularity,
+    series: {
+      users: usersSeries.map(x => ({ date: x._id, count: x.count })),
+      requests: requestsSeries.map(x => ({ date: x._id, count: x.count })),
+    },
+    requestsByStatus: Object.fromEntries(requestsByStatus.map(x => [x._id, x.count])),
+  });
 }
