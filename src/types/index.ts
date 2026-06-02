@@ -1,11 +1,13 @@
 import { Request } from 'express';
 import { IUser } from '../models/User';
+import { IPrestataire } from '../models/Prestataire';
 
 export interface AuthRequest extends Request {
   user?: IUser;
+  prestataire?: IPrestataire | null;
 }
 
-export type UserRole = 'client' | 'prestataire' | 'staff' | 'admin';
+export type UserRole = 'user' | 'staff' | 'admin';
 
 export type RequestStatus =
   | 'email_pending'

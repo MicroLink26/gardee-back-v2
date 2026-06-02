@@ -1,4 +1,5 @@
 import { User } from '../models/User';
+import { Prestataire } from '../models/Prestataire';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { geocodeAddress } from '../utils/geocoding';
 import { nanoid } from 'nanoid';
@@ -8,44 +9,42 @@ import {
 } from './emailService';
 
 export async function updateMissingGeocoding(limit = 100): Promise<number> {
-  const users = await User.find({
-    role: 'prestataire',
+  const prests = await Prestataire.find({
     geocodeStatus: 'pending',
     adresse: { $exists: true },
   }).limit(limit);
 
   let count = 0;
-  for (const user of users) {
-    const result = await geocodeAddress(user.adresse, user.codePostal, user.ville);
+  for (const prest of prests) {
+    const result = await geocodeAddress(prest.adresse, prest.codePostal, prest.ville);
     if (result) {
-      user.location = { type: 'Point', coordinates: [result.lng, result.lat] };
-      user.geocodeStatus = 'ok';
+      prest.location = { type: 'Point', coordinates: [result.lng, result.lat] };
+      prest.geocodeStatus = 'ok';
     } else {
-      user.geocodeStatus = 'not_found';
+      prest.geocodeStatus = 'not_found';
     }
-    user.geocodedAt = new Date();
-    await user.save();
+    prest.geocodedAt = new Date();
+    await prest.save();
     count++;
   }
   return count;
 }
 
 export async function geocodeMissingVilleOnly(limit = 100): Promise<number> {
-  const users = await User.find({
-    role: 'prestataire',
+  const prests = await Prestataire.find({
     ville: { $exists: true, $ne: '' },
     geocodeStatus: { $in: ['error', 'not_found', 'pending'] },
     $or: [{ location: null }, { location: { $exists: false } }, { 'location.coordinates': { $exists: false } }],
   }).limit(limit);
 
   let count = 0;
-  for (const user of users) {
-    const result = await geocodeAddress(undefined, undefined, user.ville);
+  for (const prest of prests) {
+    const result = await geocodeAddress(undefined, undefined, prest.ville);
     if (result) {
-      user.location = { type: 'Point', coordinates: [result.lng, result.lat] };
-      user.geocodeStatus = 'ok';
-      user.geocodedAt = new Date();
-      await user.save();
+      prest.location = { type: 'Point', coordinates: [result.lng, result.lat] };
+      prest.geocodeStatus = 'ok';
+      prest.geocodedAt = new Date();
+      await prest.save();
       count++;
     }
   }
@@ -65,9 +64,9 @@ export async function sendUpcomingReminders(): Promise<number> {
 
   let count = 0;
   for (const req of requests) {
-    const prestataire = await User.findById(req.prestataireId);
-    if (!prestataire) continue;
-    await sendUpcomingReminderEmail(req, prestataire);
+    const user = await User.findById(req.prestataireId);
+    if (!user) continue;
+    await sendUpcomingReminderEmail(req, user);
     count++;
   }
   return count;
@@ -87,14 +86,14 @@ export async function sendRatingRequests(): Promise<number> {
 
   let count = 0;
   for (const req of requests) {
-    const prestataire = await User.findById(req.prestataireId);
-    if (!prestataire) continue;
+    const user = await User.findById(req.prestataireId);
+    if (!user) continue;
     const token = nanoid(32);
     req.ratingToken = token;
     req.ratingTokenExpiresAt = new Date(Date.now() + 14 * 86400 * 1000);
     req.ratingEmailSentAt = new Date();
     await req.save();
-    await sendRatingRequestEmail(req, prestataire);
+    await sendRatingRequestEmail(req, user);
     count++;
   }
   return count;

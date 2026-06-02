@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { nanoid } from 'nanoid';
 import { User } from '../models/User';
+import { Prestataire } from '../models/Prestataire';
 import { RefreshToken } from '../models/RefreshToken';
 import { PasswordReset } from '../models/PasswordReset';
 import { signAccessToken, createRefreshToken } from '../utils/tokens';
 import { sendForgotPasswordEmail } from '../services/emailService';
+import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
 
 const COOKIE_OPTS = {
@@ -30,11 +32,12 @@ export async function login(req: Request, res: Response): Promise<void> {
   user.last_login = new Date();
   await user.save();
 
+  const prestataire = await Prestataire.findOne({ userId: user._id });
   const accessToken = signAccessToken(user._id);
   const refreshToken = await createRefreshToken(user._id);
 
   res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
-  res.json({ user: { _id: user._id, email: user.email, nom: user.nom, prenom: user.prenom, role: user.role }, accessToken });
+  res.json({ user: serializeUser(user, prestataire), accessToken });
 }
 
 export async function refresh(req: Request, res: Response): Promise<void> {
@@ -71,19 +74,16 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function me(req: AuthRequest, res: Response): Promise<void> {
-  const user = req.user!;
-  const { passwordHash: _pw, ...safeUser } = user.toObject();
-  res.json({ user: safeUser });
+  res.json({ user: serializeUser(req.user!, req.prestataire) });
 }
 
 export async function getRoles(req: AuthRequest, res: Response): Promise<void> {
-  res.json({ role: req.user!.role });
+  res.json({ role: req.user!.role, isPrestataire: !!req.prestataire });
 }
 
 export async function forgotPassword(req: Request, res: Response): Promise<void> {
   const { email } = req.body as { email: string };
   const user = await User.findOne({ email: email?.toLowerCase() });
-  // Always return ok to avoid email enumeration
   if (user) {
     const token = nanoid(32);
     await PasswordReset.create({

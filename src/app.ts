@@ -11,6 +11,7 @@ import { errorHandler, notFound } from './middlewares/errorHandler';
 
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
+import prestataireRoutes from './routes/prestataires';
 import requestRoutes from './routes/requests';
 import reviewRoutes from './routes/reviews';
 import adminRoutes from './routes/admin';
@@ -49,6 +50,7 @@ app.use(fileUpload({ limits: { fileSize: 5 * 1024 * 1024 } }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/prestataires', prestataireRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);

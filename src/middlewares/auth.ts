@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
+import { Prestataire } from '../models/Prestataire';
 import { AuthRequest } from '../types';
 
 export async function isConnected(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -18,6 +19,7 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
       return;
     }
     req.user = user;
+    req.prestataire = await Prestataire.findOne({ userId: user._id });
     next();
   } catch {
     res.status(401).json({ error: 'Token invalide' });
@@ -41,7 +43,7 @@ export function isAdmin(req: AuthRequest, res: Response, next: NextFunction): vo
 }
 
 export function isPrestataire(req: AuthRequest, res: Response, next: NextFunction): void {
-  if (req.user?.role !== 'prestataire' && req.user?.role !== 'staff' && req.user?.role !== 'admin') {
+  if (!req.prestataire && req.user?.role !== 'staff' && req.user?.role !== 'admin') {
     res.status(403).json({ error: 'Accès réservé aux prestataires' });
     return;
   }

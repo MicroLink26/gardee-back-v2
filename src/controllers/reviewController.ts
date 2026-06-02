@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ServiceRequest } from '../models/ServiceRequest';
-import { User } from '../models/User';
+import { Prestataire } from '../models/Prestataire';
 
 export async function validateRatingToken(req: Request, res: Response): Promise<void> {
   const { token } = req.query as { token: string };
@@ -52,12 +52,12 @@ export async function submitReview(req: Request, res: Response): Promise<void> {
   request.status = 'completed';
   await request.save();
 
-  const prestataire = await User.findById(request.prestataireId);
-  if (prestataire) {
-    const total = prestataire.averageRating * prestataire.numberOfReviews + average;
-    prestataire.numberOfReviews += 1;
-    prestataire.averageRating = parseFloat((total / prestataire.numberOfReviews).toFixed(2));
-    await prestataire.save();
+  const prestDoc = await Prestataire.findOne({ userId: request.prestataireId });
+  if (prestDoc) {
+    const total = prestDoc.averageRating * prestDoc.numberOfReviews + average;
+    prestDoc.numberOfReviews += 1;
+    prestDoc.averageRating = parseFloat((total / prestDoc.numberOfReviews).toFixed(2));
+    await prestDoc.save();
   }
 
   res.json({ ok: true });
