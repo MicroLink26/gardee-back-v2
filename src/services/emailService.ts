@@ -20,6 +20,18 @@ export async function sendWelcomeEmail(user: IUser): Promise<void> {
   );
 }
 
+export async function sendWelcomeClientEmail(user: IUser): Promise<void> {
+  const link = `${APP_URL()}/app/mes-demandes`;
+  await sendMail(
+    user.email,
+    'Bienvenue sur Gardee !',
+    `<p>Bonjour ${user.prenom},</p>
+    <p>Votre compte Gardee a bien été créé. Vous pouvez maintenant suivre toutes vos demandes de jardinage depuis votre espace personnel.</p>
+    <p><a href="${link}">Accéder à mes demandes →</a></p>
+    ${emailFooter}`
+  );
+}
+
 export async function sendRequestConfirmationEmail(
   to: string,
   token: string,

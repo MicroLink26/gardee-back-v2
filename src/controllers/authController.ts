@@ -6,7 +6,7 @@ import { Prestataire } from '../models/Prestataire';
 import { RefreshToken } from '../models/RefreshToken';
 import { PasswordReset } from '../models/PasswordReset';
 import { signAccessToken, createRefreshToken } from '../utils/tokens';
-import { sendForgotPasswordEmail } from '../services/emailService';
+import { sendForgotPasswordEmail, sendWelcomeClientEmail } from '../services/emailService';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
 
@@ -37,6 +37,8 @@ export async function register(req: Request, res: Response): Promise<void> {
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await User.create({ email: email.toLowerCase(), passwordHash, nom, prenom, role: 'user' });
+
+  sendWelcomeClientEmail(user).catch(() => {});
 
   const accessToken = signAccessToken(user._id);
   const refreshToken = await createRefreshToken(user._id);
