@@ -5,13 +5,18 @@ import { IUser } from '../models/User';
 const FRONT_URL = () => process.env.FRONT_URL ?? 'https://gardee.fr';
 const APP_URL = () => process.env.APP_URL ?? 'https://gardee.fr';
 
+const emailFooter = `
+<p>L'équipe Gardee</p>
+<hr style="border:none;border-top:1px solid #e9e5d6;margin:1.5rem 0" />
+<p style="font-size:0.78rem;color:#9ca3af">Si ce message vous semble frauduleux ou que vous n'en êtes pas à l'origine, merci de nous le signaler à <a href="mailto:info@gardee.fr" style="color:#9ca3af">info@gardee.fr</a>.</p>`;
+
 export async function sendWelcomeEmail(user: IUser): Promise<void> {
   await sendMail(
     user.email,
     'Bienvenue sur Gardee !',
     `<p>Bonjour ${user.prenom},</p>
     <p>Votre inscription a bien été reçue. Votre profil sera visible après validation par notre équipe.</p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -28,7 +33,7 @@ export async function sendRequestConfirmationEmail(
     <p>Vous avez soumis une demande de service à <strong>${prestataire.prenom} ${prestataire.nom}</strong>.</p>
     <p>Cliquez sur le lien ci-dessous pour confirmer votre demande (valable 48h) :</p>
     <p><a href="${link}">${link}</a></p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -47,7 +52,7 @@ export async function sendRequestToProvider(
     ${request.desiredAt ? `<p>Date souhaitée : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
     ${request.description ? `<p>Description : ${request.description}</p>` : ''}
     <p>Connectez-vous à votre espace pour répondre : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -61,7 +66,7 @@ export async function sendProviderAcceptedEmail(
     `<p>Bonjour,</p>
     <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> a accepté votre demande de service.</p>
     ${request.desiredAt ? `<p>Date confirmée : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -95,7 +100,7 @@ export async function sendProviderProposedEmail(
     </p>
     <p style="font-size:0.8rem;color:#9ca3af">Ce lien est valable 7 jours.</p>
     ` : ''}
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -111,7 +116,7 @@ export async function sendClientRefusedProposalEmail(
     `<p>Bonjour ${prestataire.prenom},</p>
     <p>Le client ${request.requesterPrenom ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim() : request.requesterEmail} a décliné votre proposition du <strong>${dateStr}</strong>.</p>
     <p>Vous pouvez proposer une autre date depuis votre espace : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -127,7 +132,7 @@ export async function sendProviderRefusedEmail(
     <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> n'est pas disponible pour votre demande.</p>
     ${message ? `<p>Message : ${message}</p>` : ''}
     <p>Vous pouvez trouver d'autres prestataires sur <a href="${FRONT_URL()}">${FRONT_URL()}</a></p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -143,7 +148,7 @@ export async function sendRatingRequestEmail(
     <p>Votre prestation avec <strong>${prestataire.prenom} ${prestataire.nom}</strong> vient de se terminer.</p>
     <p>Donnez votre avis en cliquant sur ce lien :</p>
     <p><a href="${link}">${link}</a></p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -157,7 +162,7 @@ export async function sendUpcomingReminderEmail(
     `<p>Bonjour,</p>
     <p>Rappel : votre prestation avec <strong>${prestataire.prenom} ${prestataire.nom}</strong> est prévue demain.</p>
     ${request.desiredAt ? `<p>Date : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
 
@@ -170,6 +175,6 @@ export async function sendForgotPasswordEmail(to: string, token: string): Promis
     <p>Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe (valable 1h) :</p>
     <p><a href="${link}">${link}</a></p>
     <p>Si vous n'avez pas fait cette demande, ignorez cet email.</p>
-    <p>L'équipe Gardee</p>`
+    ${emailFooter}`
   );
 }
