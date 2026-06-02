@@ -69,15 +69,48 @@ export async function sendProviderProposedEmail(
   request: IServiceRequest,
   prestataire: IUser,
   proposedDate: Date,
-  comment?: string
+  comment?: string,
+  token?: string
 ): Promise<void> {
+  const dateStr = `${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à ${new Date(proposedDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  const acceptLink = token ? `${APP_URL()}/app/requests/proposal-accept?token=${token}` : null;
+  const refuseLink = token ? `${APP_URL()}/app/requests/proposal-refuse?token=${token}` : null;
+
   await sendMail(
     request.requesterEmail,
     'Proposition de date de votre prestataire',
     `<p>Bonjour,</p>
     <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> vous propose une nouvelle date :</p>
-    <p><strong>${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à ${new Date(proposedDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong></p>
+    <p><strong>${dateStr}</strong></p>
     ${comment ? `<p>Message : ${comment}</p>` : ''}
+    ${acceptLink ? `
+    <p style="margin-top:1.5rem">
+      <a href="${acceptLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#3a5020;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+        ✓ Accepter cette date
+      </a>
+      &nbsp;&nbsp;
+      <a href="${refuseLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#fef2f2;color:#b91c1c;text-decoration:none;border-radius:8px;font-weight:bold;border:1px solid #fecaca">
+        ✗ Décliner cette date
+      </a>
+    </p>
+    <p style="font-size:0.8rem;color:#9ca3af">Ce lien est valable 7 jours.</p>
+    ` : ''}
+    <p>L'équipe Gardee</p>`
+  );
+}
+
+export async function sendClientRefusedProposalEmail(
+  request: IServiceRequest,
+  prestataire: IUser,
+  proposedDate: Date
+): Promise<void> {
+  const dateStr = `${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à ${new Date(proposedDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  await sendMail(
+    prestataire.email,
+    'Proposition de date refusée',
+    `<p>Bonjour ${prestataire.prenom},</p>
+    <p>Le client ${request.requesterPrenom ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim() : request.requesterEmail} a décliné votre proposition du <strong>${dateStr}</strong>.</p>
+    <p>Vous pouvez proposer une autre date depuis votre espace : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
     <p>L'équipe Gardee</p>`
   );
 }

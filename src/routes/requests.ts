@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { isConnected, isPrestataire } from '../middlewares/auth';
 import * as req from '../controllers/requestController';
 
+
 const router = Router();
 
 // Public / email-flow
@@ -11,6 +12,8 @@ router.post('/resend', req.resendConfirmation);
 
 // Client actions (no auth — token-based or authenticated)
 router.post('/:id/client/accept-proposal', req.clientAcceptProposal);
+router.get('/proposal/accept', req.clientAcceptProposalByToken);
+router.get('/proposal/refuse', req.clientRefuseProposalByToken);
 
 // Authenticated client
 router.get('/mine/client', isConnected, req.listMyClientRequests);

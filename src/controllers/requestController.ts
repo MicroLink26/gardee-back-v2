@@ -9,6 +9,7 @@ import {
   sendProviderAcceptedEmail,
   sendProviderProposedEmail,
   sendProviderRefusedEmail,
+  sendClientRefusedProposalEmail,
 } from '../services/emailService';
 
 export async function createRequest(req: Request, res: Response): Promise<void> {
@@ -173,9 +174,12 @@ export async function providerPropose(req: AuthRequest, res: Response): Promise<
   const proposedDate = new Date(date);
   request.proposals.push({ by: 'provider', date: proposedDate, comment, createdAt: new Date() });
   request.status = 'provider_proposed';
+  const token = randomBytes(20).toString('hex');
+  request.proposalToken = token;
+  request.proposalTokenExpiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
   await request.save();
 
-  await sendProviderProposedEmail(request, req.user!, proposedDate, comment);
+  await sendProviderProposedEmail(request, req.user!, proposedDate, comment, token);
   res.json({ ok: true, status: request.status, proposals: request.proposals });
 }
 
@@ -227,6 +231,48 @@ export async function clientAcceptProposal(req: Request, res: Response): Promise
   request.status = 'scheduled';
   await request.save();
   res.json({ ok: true, status: request.status, desiredAt: request.desiredAt });
+}
+
+export async function clientAcceptProposalByToken(req: Request, res: Response): Promise<void> {
+  const { token } = req.query as { token?: string };
+  if (!token) { res.status(400).json({ error: 'Token manquant' }); return; }
+
+  const request = await ServiceRequest.findOne({
+    proposalToken: token,
+    proposalTokenExpiresAt: { $gt: new Date() },
+    status: 'provider_proposed',
+  });
+  if (!request) { res.status(404).json({ error: 'Lien invalide ou expiré' }); return; }
+
+  const lastProposal = request.proposals.at(-1);
+  if (lastProposal) request.desiredAt = lastProposal.date;
+  request.status = 'scheduled';
+  request.proposalToken = undefined;
+  await request.save();
+  res.json({ ok: true, desiredAt: request.desiredAt });
+}
+
+export async function clientRefuseProposalByToken(req: Request, res: Response): Promise<void> {
+  const { token } = req.query as { token?: string };
+  if (!token) { res.status(400).json({ error: 'Token manquant' }); return; }
+
+  const request = await ServiceRequest.findOne({
+    proposalToken: token,
+    proposalTokenExpiresAt: { $gt: new Date() },
+    status: 'provider_proposed',
+  });
+  if (!request) { res.status(404).json({ error: 'Lien invalide ou expiré' }); return; }
+
+  const lastProposal = request.proposals.at(-1);
+  request.status = 'sent_to_provider';
+  request.proposalToken = undefined;
+  await request.save();
+
+  const prestataire = await User.findById(request.prestataireId);
+  if (prestataire && lastProposal) {
+    await sendClientRefusedProposalEmail(request, prestataire, lastProposal.date);
+  }
+  res.json({ ok: true });
 }
 
 export async function markComplete(req: AuthRequest, res: Response): Promise<void> {

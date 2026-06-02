@@ -49,6 +49,8 @@ export interface IServiceRequest extends Document {
   ratingComment?: string;
   recommend?: boolean;
   ratingGivenAt?: Date;
+  proposalToken?: string;
+  proposalTokenExpiresAt?: Date;
   ratingToken?: string;
   ratingTokenExpiresAt?: Date;
   ratingEmailSentAt?: Date;
@@ -106,6 +108,8 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
     ratingComment: { type: String },
     recommend: { type: Boolean },
     ratingGivenAt: { type: Date },
+    proposalToken: { type: String, index: true },
+    proposalTokenExpiresAt: { type: Date },
     ratingToken: { type: String, index: true },
     ratingTokenExpiresAt: { type: Date },
     ratingEmailSentAt: { type: Date },
