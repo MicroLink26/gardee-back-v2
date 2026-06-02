@@ -114,7 +114,11 @@ export async function getThreadByToken(req: Request, res: Response): Promise<voi
   }
 
   const prestataire = await User.findById(request.prestataireId).select('prenom nom');
-  res.json({ messages: request.messages, prestataireName: prestataire ? `${prestataire.prenom} ${prestataire.nom}` : '' });
+  res.json({
+    messages: request.messages,
+    prestataireName: prestataire ? `${prestataire.prenom} ${prestataire.nom}` : '',
+    clientEmail: request.requesterEmail,
+  });
 }
 
 // Lister toutes les demandes avec messages (pour la page Messagerie du back office)

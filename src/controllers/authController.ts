@@ -17,6 +17,33 @@ const COOKIE_OPTS = {
   maxAge: parseInt(process.env.REFRESH_TTL_DAYS ?? '30', 10) * 86400 * 1000,
 };
 
+export async function checkEmail(req: Request, res: Response): Promise<void> {
+  const email = (req.query as { email?: string }).email?.toLowerCase();
+  if (!email) { res.status(400).json({ error: 'Email requis' }); return; }
+  const exists = !!(await User.findOne({ email }).select('_id'));
+  res.json({ exists });
+}
+
+export async function register(req: Request, res: Response): Promise<void> {
+  const { email, password, nom, prenom } = req.body as { email: string; password: string; nom: string; prenom: string };
+  if (!email || !password || !nom || !prenom) {
+    res.status(400).json({ error: 'Tous les champs sont requis' });
+    return;
+  }
+  const existing = await User.findOne({ email: email.toLowerCase() });
+  if (existing) {
+    res.status(409).json({ error: 'Un compte existe déjà avec cet email' });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await User.create({ email: email.toLowerCase(), passwordHash, nom, prenom, role: 'user' });
+
+  const accessToken = signAccessToken(user._id);
+  const refreshToken = await createRefreshToken(user._id);
+  res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
+  res.status(201).json({ user: serializeUser(user, null), accessToken });
+}
+
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body as { email: string; password: string };
   const user = await User.findOne({ email: email?.toLowerCase() });
