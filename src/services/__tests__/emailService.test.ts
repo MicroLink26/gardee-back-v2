@@ -39,7 +39,7 @@ describe('emailService', () => {
     expect(mockedSendMail).toHaveBeenCalledWith(
       'user@example.com',
       'Réinitialisation de votre mot de passe',
-      expect.stringContaining('https://app.gardee.test/reset-password?token=reset-token-123')
+      expect.stringContaining('https://app.gardee.test/app/forgot-password?token=reset-token-123')
     );
   });
 
