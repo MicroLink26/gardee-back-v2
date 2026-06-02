@@ -44,7 +44,7 @@ export async function sendRequestToProvider(
     <p>Email : ${request.requesterEmail}</p>
     ${request.address ? `<p>Adresse du chantier : <strong>${request.address}</strong></p>` : ''}
     <p>Services demandés : ${request.prestations.join(', ')}</p>
-    ${request.desiredAt ? `<p>Date souhaitée : ${new Date(request.desiredAt).toLocaleDateString('fr-FR')}</p>` : ''}
+    ${request.desiredAt ? `<p>Date souhaitée : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
     ${request.description ? `<p>Description : ${request.description}</p>` : ''}
     <p>Connectez-vous à votre espace pour répondre : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
     <p>L'équipe Gardee</p>`
@@ -60,7 +60,7 @@ export async function sendProviderAcceptedEmail(
     'Votre demande a été acceptée',
     `<p>Bonjour,</p>
     <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> a accepté votre demande de service.</p>
-    ${request.desiredAt ? `<p>Date confirmée : ${new Date(request.desiredAt).toLocaleDateString('fr-FR')}</p>` : ''}
+    ${request.desiredAt ? `<p>Date confirmée : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
     <p>L'équipe Gardee</p>`
   );
 }
@@ -76,7 +76,7 @@ export async function sendProviderProposedEmail(
     'Proposition de date de votre prestataire',
     `<p>Bonjour,</p>
     <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> vous propose une nouvelle date :</p>
-    <p><strong>${new Date(proposedDate).toLocaleDateString('fr-FR')}</strong></p>
+    <p><strong>${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à ${new Date(proposedDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</strong></p>
     ${comment ? `<p>Message : ${comment}</p>` : ''}
     <p>L'équipe Gardee</p>`
   );
@@ -123,7 +123,7 @@ export async function sendUpcomingReminderEmail(
     'Rappel : prestation demain',
     `<p>Bonjour,</p>
     <p>Rappel : votre prestation avec <strong>${prestataire.prenom} ${prestataire.nom}</strong> est prévue demain.</p>
-    ${request.desiredAt ? `<p>Date : ${new Date(request.desiredAt).toLocaleDateString('fr-FR')}</p>` : ''}
+    ${request.desiredAt ? `<p>Date : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
     <p>L'équipe Gardee</p>`
   );
 }
