@@ -166,6 +166,51 @@ export async function sendUpcomingReminderEmail(
   );
 }
 
+export async function sendMessageToClientEmail(
+  request: IServiceRequest,
+  prestataireName: string,
+  content: string,
+  token: string
+): Promise<void> {
+  const replyLink = `${APP_URL()}/app/requests/message-reply?token=${token}`;
+  await sendMail(
+    request.requesterEmail,
+    `Message de ${prestataireName} — Gardee`,
+    `<p>Bonjour${request.requesterPrenom ? ` ${request.requesterPrenom}` : ''},</p>
+    <p><strong>${prestataireName}</strong> vous a envoyé un message concernant votre demande :</p>
+    <blockquote style="border-left:3px solid #a8c47a;margin:1rem 0;padding:0.75rem 1rem;background:#f5f2eb;border-radius:0 8px 8px 0;color:#374151">
+      ${content.replace(/\n/g, '<br>')}
+    </blockquote>
+    <p style="margin-top:1.5rem">
+      <a href="${replyLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#3a5020;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+        Répondre à ce message
+      </a>
+    </p>
+    <p style="font-size:0.85rem;color:#6b7280">Vous pouvez aussi répondre depuis votre espace Gardee si vous avez un compte : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
+    <p style="font-size:0.78rem;color:#9ca3af">Ce lien est valable 7 jours.</p>
+    ${emailFooter}`
+  );
+}
+
+export async function sendMessageToProviderEmail(
+  request: IServiceRequest,
+  prestataire: IUser,
+  clientName: string,
+  content: string
+): Promise<void> {
+  await sendMail(
+    prestataire.email,
+    `Réponse de ${clientName} — Gardee`,
+    `<p>Bonjour ${prestataire.prenom},</p>
+    <p><strong>${clientName}</strong> a répondu à votre message :</p>
+    <blockquote style="border-left:3px solid #a8c47a;margin:1rem 0;padding:0.75rem 1rem;background:#f5f2eb;border-radius:0 8px 8px 0;color:#374151">
+      ${content.replace(/\n/g, '<br>')}
+    </blockquote>
+    <p>Retrouvez la conversation dans votre espace : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
+    ${emailFooter}`
+  );
+}
+
 export async function sendForgotPasswordEmail(to: string, token: string): Promise<void> {
   const link = `${APP_URL()}/app/forgot-password?token=${token}`;
   await sendMail(

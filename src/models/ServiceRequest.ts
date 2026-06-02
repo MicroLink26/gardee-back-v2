@@ -8,6 +8,15 @@ interface IProposal {
   createdAt: Date;
 }
 
+export interface IMessage {
+  _id: Types.ObjectId;
+  fromRole: 'provider' | 'client';
+  fromEmail: string;
+  fromName: string;
+  content: string;
+  createdAt: Date;
+}
+
 interface IRatingDetails {
   time: number;
   quality: number;
@@ -19,6 +28,9 @@ interface IRatingDetails {
 export interface IServiceRequest extends Document {
   _id: Types.ObjectId;
   prestataireId: Types.ObjectId;
+  messages: IMessage[];
+  messageToken?: string;
+  messageTokenExpiresAt?: Date;
   // Client info — ObjectId if registered client, email if guest
   clientId?: Types.ObjectId;
   requesterEmail: string;
@@ -57,6 +69,14 @@ export interface IServiceRequest extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const MessageSchema = new Schema<IMessage>({
+  fromRole: { type: String, enum: ['provider', 'client'], required: true },
+  fromEmail: { type: String, required: true },
+  fromName: { type: String, required: true },
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
 
 const ProposalSchema = new Schema<IProposal>({
   by: { type: String, enum: ['provider', 'client'], required: true },
@@ -99,6 +119,9 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
       ],
       default: 'email_pending',
     },
+    messages: { type: [MessageSchema], default: [] },
+    messageToken: { type: String, index: true },
+    messageTokenExpiresAt: { type: Date },
     proposals: [ProposalSchema],
     verifyToken: { type: String, index: true },
     verifyTokenExpiresAt: { type: Date },
