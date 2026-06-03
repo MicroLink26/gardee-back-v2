@@ -13,6 +13,7 @@ const config: Config.InitialOptions = {
   },
   transformIgnorePatterns: ['/node_modules/(?!(nanoid)/)'],
   collectCoverageFrom: [
+    'src/app.ts',
     'src/config/**/*.ts',
     'src/controllers/**/*.ts',
     'src/services/**/*.ts',
