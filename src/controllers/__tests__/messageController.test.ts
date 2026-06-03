@@ -163,6 +163,7 @@ describe('messageController', () => {
     it('saves the reply and rotates the token', async () => {
       const saveMock = jest.fn();
       const request = {
+        _id: 'req-id',
         messages: [],
         messageToken: 'old-token',
         messageTokenExpiresAt: new Date(Date.now() + 86400000),
@@ -174,7 +175,7 @@ describe('messageController', () => {
       } as any;
       request.messages.push = jest.fn();
       mockSRFindOne.mockResolvedValue(request);
-      mockUserFindById.mockResolvedValue({ prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' });
+      mockUserFindById.mockResolvedValue({ _id: 'prest-id', prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' });
 
       await replyByToken(
         { body: { token: 'old-token', content: 'Ma réponse' } } as Request,
@@ -423,13 +424,14 @@ describe('messageController', () => {
       const { sendMessageToProviderEmail } = jest.requireMock('../../services/emailService');
       const saveMock = jest.fn();
       const request = {
+        _id: 'req-id',
         messages: [],
         prestataireId: 'prest-id',
         save: saveMock,
       } as any;
       request.messages.push = jest.fn();
       mockSRFindOne.mockResolvedValue(request);
-      mockUserFindById.mockResolvedValue({ prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' });
+      mockUserFindById.mockResolvedValue({ _id: 'prest-id', prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' });
 
       const req = {
         body: { content: 'Bonjour, est-ce disponible ?' },
