@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { version } from '../package.json';
 import cors from 'cors';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import fileUpload from 'express-fileupload';
@@ -32,6 +33,7 @@ const allowedOrigins = [
   'https://v2.gardee.fr',
 ];
 
+app.use(helmet());
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);

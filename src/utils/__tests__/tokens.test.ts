@@ -4,10 +4,14 @@ import { randomHex, signAccessToken } from '../tokens';
 
 describe('tokens utils', () => {
   describe('randomHex', () => {
-    it('returns a hex string of the requested length', () => {
+    it('returns a hex string of double the byte length', () => {
       const result = randomHex(16);
-      expect(result).toHaveLength(16);
+      expect(result).toHaveLength(32); // 16 bytes → 32 hex chars
       expect(result).toMatch(/^[0-9a-f]+$/);
+    });
+
+    it('produces different values on successive calls', () => {
+      expect(randomHex(16)).not.toBe(randomHex(16));
     });
   });
 

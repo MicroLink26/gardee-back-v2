@@ -1,4 +1,8 @@
 import { Request, Response } from 'express';
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 import bcrypt from 'bcryptjs';
 import { UploadedFile } from 'express-fileupload';
 import { User } from '../models/User';
@@ -146,7 +150,7 @@ export async function searchPrestataires(req: Request, res: Response): Promise<v
 
   const prestFilter: Record<string, unknown> = { is_validated: true };
   if (prestation) prestFilter.prestations = prestation;
-  if (ville) prestFilter.ville = new RegExp(ville, 'i');
+  if (ville) prestFilter.ville = new RegExp(escapeRegExp(ville), 'i');
 
   if (sort === 'distance' && lat && lng) {
     prestFilter.location = {
@@ -202,7 +206,7 @@ export async function getRanking(req: Request, res: Response): Promise<void> {
 
   const filter: Record<string, unknown> = { is_validated: true };
   if (prestation) filter.prestations = prestation;
-  if (ville) filter.ville = new RegExp(ville, 'i');
+  if (ville) filter.ville = new RegExp(escapeRegExp(ville), 'i');
 
   const [prests, total] = await Promise.all([
     Prestataire.find(filter)

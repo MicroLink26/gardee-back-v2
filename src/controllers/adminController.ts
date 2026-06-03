@@ -4,10 +4,14 @@ import { Prestataire } from '../models/Prestataire';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { AuthRequest, UserRole } from '../types';
 
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function buildUserFilter(query: Record<string, string>) {
   const filter: Record<string, unknown> = {};
   if (query.q) {
-    const regex = new RegExp(query.q, 'i');
+    const regex = new RegExp(escapeRegExp(query.q), 'i');
     filter.$or = [{ nom: regex }, { prenom: regex }, { email: regex }];
   }
   if (query.role) filter.role = query.role;
@@ -34,7 +38,7 @@ export async function listPendingPrestataires(req: AuthRequest, res: Response): 
 
   const prestFilter: Record<string, unknown> = { is_validated: false };
   if (q) {
-    const regex = new RegExp(q, 'i');
+    const regex = new RegExp(escapeRegExp(q), 'i');
     prestFilter.$or = [{ ville: regex }, { prestations: regex }];
   }
 

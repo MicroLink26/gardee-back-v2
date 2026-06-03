@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { sendMessage, replyByToken, getThreadByToken } from '../messageController';
+import { sendMessage, replyByToken, getThreadByToken, getMessages, listThreads, clientSendMessage } from '../messageController';
 import { ServiceRequest } from '../../models/ServiceRequest';
 import { User } from '../../models/User';
 import { AuthRequest } from '../../types';
 
 jest.mock('../../models/ServiceRequest', () => ({
-  ServiceRequest: { findOne: jest.fn() },
+  ServiceRequest: { findOne: jest.fn(), find: jest.fn() },
 }));
 
 jest.mock('../../models/User', () => ({
@@ -19,6 +19,7 @@ jest.mock('../../services/emailService', () => ({
 
 describe('messageController', () => {
   const mockSRFindOne = ServiceRequest.findOne as jest.Mock;
+  const mockSRFind = ServiceRequest.find as jest.Mock;
   const mockUserFindById = User.findById as jest.Mock;
 
   let res: Partial<Response>;
@@ -163,6 +164,203 @@ describe('messageController', () => {
         prestataireName: 'Jean Dupont',
         clientEmail: 'client@example.com',
       });
+    });
+
+    it('returns empty prestataireName when prestataire not found', async () => {
+      const request = {
+        messages: [],
+        requesterEmail: 'client@example.com',
+        prestataireId: 'prest-id',
+      };
+      mockSRFindOne.mockReturnValue({ select: jest.fn().mockResolvedValue(request) });
+      mockUserFindById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+      await getThreadByToken(
+        { query: { token: 'valid-token' } } as unknown as Request,
+        res as Response
+      );
+
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ prestataireName: '' }));
+    });
+  });
+
+  // ── getMessages ───────────────────────────────────────────────────
+
+  describe('getMessages', () => {
+    it('returns messages and token for a valid request', async () => {
+      const request = {
+        messages: [{ fromRole: 'provider', content: 'Bonjour' }],
+        messageToken: 'tok-123',
+      };
+      mockSRFindOne.mockReturnValue({ select: jest.fn().mockResolvedValue(request) });
+
+      const req = {
+        params: { id: 'req-id' },
+        user: { _id: 'uid' },
+      } as unknown as AuthRequest;
+
+      await getMessages(req, res as Response);
+
+      expect(json).toHaveBeenCalledWith({ messages: request.messages, token: 'tok-123' });
+    });
+
+    it('returns 404 when request is not found', async () => {
+      mockSRFindOne.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+      const req = {
+        params: { id: 'unknown-id' },
+        user: { _id: 'uid' },
+      } as unknown as AuthRequest;
+
+      await getMessages(req, res as Response);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Demande introuvable' });
+    });
+  });
+
+  // ── listThreads ───────────────────────────────────────────────────
+
+  describe('listThreads', () => {
+    it('returns formatted threads with last message', async () => {
+      const lastMsg = { fromRole: 'client', content: 'Merci', createdAt: new Date() };
+      const requests = [
+        {
+          _id: 'req-1',
+          requesterEmail: 'client@example.com',
+          requesterPrenom: 'Marie',
+          requesterNom: 'Curie',
+          status: 'scheduled',
+          messages: [lastMsg],
+          createdAt: new Date(),
+        },
+      ];
+      mockSRFind.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockResolvedValue(requests),
+        }),
+      });
+
+      const req = { user: { _id: 'uid' } } as unknown as AuthRequest;
+
+      await listThreads(req, res as Response);
+
+      expect(json).toHaveBeenCalledWith({
+        threads: [expect.objectContaining({
+          _id: 'req-1',
+          requesterEmail: 'client@example.com',
+          requesterName: 'Marie Curie',
+          status: 'scheduled',
+          messageCount: 1,
+          lastMessage: lastMsg,
+        })],
+      });
+    });
+
+    it('uses requesterEmail as name when prenom is absent', async () => {
+      const requests = [
+        {
+          _id: 'req-2',
+          requesterEmail: 'anon@example.com',
+          requesterPrenom: undefined,
+          requesterNom: undefined,
+          status: 'pending',
+          messages: [{ fromRole: 'provider', content: 'Hello' }],
+          createdAt: new Date(),
+        },
+      ];
+      mockSRFind.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockResolvedValue(requests),
+        }),
+      });
+
+      const req = { user: { _id: 'uid' } } as unknown as AuthRequest;
+
+      await listThreads(req, res as Response);
+
+      const thread = (json.mock.calls[0][0] as any).threads[0];
+      expect(thread.requesterName).toBe('anon@example.com');
+    });
+  });
+
+  // ── clientSendMessage ─────────────────────────────────────────────
+
+  describe('clientSendMessage', () => {
+    it('returns 400 when content is empty', async () => {
+      const req = {
+        body: { content: '' },
+        params: { id: 'req-id' },
+        user: { _id: 'uid', email: 'client@example.com', prenom: 'Marie', nom: 'Curie' },
+      } as unknown as AuthRequest;
+
+      await clientSendMessage(req, res as Response);
+
+      expect(status).toHaveBeenCalledWith(400);
+      expect(json).toHaveBeenCalledWith({ error: 'Le message ne peut pas être vide' });
+    });
+
+    it('returns 404 when request is not found', async () => {
+      mockSRFindOne.mockResolvedValue(null);
+
+      const req = {
+        body: { content: 'Ma question' },
+        params: { id: 'unknown' },
+        user: { _id: 'uid', email: 'client@example.com', prenom: 'Marie', nom: 'Curie' },
+      } as unknown as AuthRequest;
+
+      await clientSendMessage(req, res as Response);
+
+      expect(status).toHaveBeenCalledWith(404);
+      expect(json).toHaveBeenCalledWith({ error: 'Demande introuvable' });
+    });
+
+    it('saves the message and notifies the provider', async () => {
+      const { sendMessageToProviderEmail } = jest.requireMock('../../services/emailService');
+      const saveMock = jest.fn();
+      const request = {
+        messages: [],
+        prestataireId: 'prest-id',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindById.mockResolvedValue({ prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' });
+
+      const req = {
+        body: { content: 'Bonjour, est-ce disponible ?' },
+        params: { id: 'req-id' },
+        user: { _id: 'uid', email: 'client@example.com', prenom: 'Marie', nom: 'Curie' },
+      } as unknown as AuthRequest;
+
+      await clientSendMessage(req, res as Response);
+
+      expect(saveMock).toHaveBeenCalled();
+      expect(sendMessageToProviderEmail).toHaveBeenCalled();
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    });
+
+    it('saves the message without error when provider is not found', async () => {
+      const saveMock = jest.fn();
+      const request = {
+        messages: [],
+        prestataireId: 'prest-id',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindById.mockResolvedValue(null);
+
+      const req = {
+        body: { content: 'Message sans prestataire' },
+        params: { id: 'req-id' },
+        user: { _id: 'uid', email: 'client@example.com', prenom: 'Marie', nom: 'Curie' },
+      } as unknown as AuthRequest;
+
+      await clientSendMessage(req, res as Response);
+
+      expect(saveMock).toHaveBeenCalled();
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     });
   });
 });

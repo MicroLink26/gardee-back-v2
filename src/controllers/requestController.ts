@@ -216,10 +216,11 @@ export async function providerCancel(req: AuthRequest, res: Response): Promise<v
   res.json({ ok: true });
 }
 
-export async function clientAcceptProposal(req: Request, res: Response): Promise<void> {
+export async function clientAcceptProposal(req: AuthRequest, res: Response): Promise<void> {
   const request = await ServiceRequest.findOne({
     _id: req.params.id,
     status: 'provider_proposed',
+    requesterEmail: req.user!.email,
   });
   if (!request) {
     res.status(404).json({ error: 'Demande introuvable' });

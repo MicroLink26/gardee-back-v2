@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
 import { Types } from 'mongoose';
@@ -22,5 +23,5 @@ export async function createRefreshToken(userId: Types.ObjectId): Promise<string
 }
 
 export function randomHex(bytes: number): string {
-  return [...Array(bytes)].map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+  return randomBytes(bytes).toString('hex');
 }

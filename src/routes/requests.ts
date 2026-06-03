@@ -11,8 +11,8 @@ router.post('/', req.createRequest);
 router.get('/confirm', req.confirmRequest);
 router.post('/resend', req.resendConfirmation);
 
-// Client actions (no auth — token-based or authenticated)
-router.post('/:id/client/accept-proposal', req.clientAcceptProposal);
+// Client actions (token-based or authenticated)
+router.post('/:id/client/accept-proposal', isConnected, req.clientAcceptProposal);
 router.get('/proposal/accept', req.clientAcceptProposalByToken);
 router.get('/proposal/refuse', req.clientRefuseProposalByToken);
 
