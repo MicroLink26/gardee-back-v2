@@ -186,6 +186,21 @@ describe('prestataireController', () => {
 
       expect(status).toHaveBeenCalledWith(201);
     });
+
+    it('completes successfully when welcome email fails', async () => {
+      const { sendWelcomeEmail } = jest.requireMock('../../services/emailService');
+      sendWelcomeEmail.mockRejectedValueOnce(new Error('SMTP down'));
+      mockUserFindOne.mockResolvedValue(null);
+      mockUserCreate.mockResolvedValue(makeUser());
+      mockPrestCreate.mockResolvedValue(makePrestataire());
+
+      await registerPrestataire(
+        { body: { email: 'new@b.com', password: 'pass123', nom: 'D', prenom: 'J', telephone: '06' } } as Request,
+        res as Response
+      );
+
+      expect(status).toHaveBeenCalledWith(201);
+    });
   });
 
   // ── addPrestataireProfile ─────────────────────────────────────────
