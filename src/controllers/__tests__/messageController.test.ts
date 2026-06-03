@@ -104,6 +104,32 @@ describe('messageController', () => {
       expect(status).toHaveBeenCalledWith(400);
     });
 
+    it('uses only prenom as clientName when requesterNom is absent', async () => {
+      const saveMock = jest.fn();
+      const request = {
+        messages: [],
+        messageToken: 'tok',
+        messageTokenExpiresAt: new Date(Date.now() + 86400000),
+        requesterEmail: 'client@example.com',
+        requesterPrenom: 'Marie',
+        requesterNom: undefined,
+        prestataireId: 'prest-id',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindById.mockResolvedValue(null);
+
+      await replyByToken(
+        { body: { token: 'tok', content: 'Réponse' } } as Request,
+        res as Response
+      );
+
+      expect(request.messages.push).toHaveBeenCalledWith(
+        expect.objectContaining({ fromName: 'Marie' })
+      );
+    });
+
     it('uses requesterEmail as clientName when requesterPrenom is absent', async () => {
       const saveMock = jest.fn();
       const request = {
@@ -280,6 +306,31 @@ describe('messageController', () => {
           lastMessage: lastMsg,
         })],
       });
+    });
+
+    it('trims name to prenom only when requesterNom is absent', async () => {
+      const requests = [
+        {
+          _id: 'req-3',
+          requesterEmail: 'marie@example.com',
+          requesterPrenom: 'Marie',
+          requesterNom: undefined,
+          status: 'pending',
+          messages: [{ fromRole: 'provider', content: 'Hello' }],
+          createdAt: new Date(),
+        },
+      ];
+      mockSRFind.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockResolvedValue(requests),
+        }),
+      });
+
+      const req = { user: { _id: 'uid' } } as unknown as AuthRequest;
+      await listThreads(req, res as Response);
+
+      const thread = (json.mock.calls[0][0] as any).threads[0];
+      expect(thread.requesterName).toBe('Marie');
     });
 
     it('uses requesterEmail as name when prenom is absent', async () => {
