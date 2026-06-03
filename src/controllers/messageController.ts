@@ -46,7 +46,8 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
     sendPushToUser(clientUser._id, {
       title: `Message de ${fromName}`,
       body: content.trim().slice(0, 100),
-      url: '/app/messagerie',
+      url: `/app/messagerie?conversation=${request._id}`,
+      requestId: request._id.toString(),
     }).catch(() => {});
   }
 
@@ -95,7 +96,8 @@ export async function replyByToken(req: Request, res: Response): Promise<void> {
     sendPushToUser(prestataire._id, {
       title: `Réponse de ${clientName}`,
       body: content.trim().slice(0, 100),
-      url: '/app/messagerie',
+      url: `/app/messagerie?conversation=${request._id}`,
+      requestId: request._id.toString(),
     }).catch(() => {});
   }
 
@@ -219,7 +221,8 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
     sendPushToUser(prestataire._id, {
       title: `Réponse de ${clientName}`,
       body: content.trim().slice(0, 100),
-      url: '/app/messagerie',
+      url: `/app/messagerie?conversation=${request._id}`,
+      requestId: request._id.toString(),
     }).catch(() => {});
   }
 

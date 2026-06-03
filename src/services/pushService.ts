@@ -17,6 +17,7 @@ interface PushPayload {
   title: string;
   body: string;
   url?: string;
+  requestId?: string;
 }
 
 export async function sendPushToUser(userId: Types.ObjectId, payload: PushPayload): Promise<void> {
