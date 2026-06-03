@@ -112,6 +112,18 @@ describe('requestController', () => {
       expect(status).toHaveBeenCalledWith(201);
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, id: 'new-id' }));
     });
+
+    it('defaults prestations to [] when not provided', async () => {
+      mockUserFindOne.mockResolvedValue(makeUser());
+      mockSRCreate.mockResolvedValue({ _id: 'new-id' });
+
+      await createRequest(
+        { body: { prestataireId: 'pid', requesterEmail: 'client@b.com' } } as Request,
+        res as Response
+      );
+
+      expect(mockSRCreate).toHaveBeenCalledWith(expect.objectContaining({ prestations: [] }));
+    });
   });
 
   // ── confirmRequest ────────────────────────────────────────────────

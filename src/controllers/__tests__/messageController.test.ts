@@ -83,6 +83,32 @@ describe('messageController', () => {
       expect(request.messageToken).toBeDefined();
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     });
+
+    it('sends push to client when client user is found', async () => {
+      const { sendPushToUser } = jest.requireMock('../../services/pushService');
+      const saveMock = jest.fn();
+      const request = {
+        _id: 'req-id',
+        messages: [],
+        messageToken: undefined,
+        messageTokenExpiresAt: undefined,
+        requesterEmail: 'client@example.com',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindOne.mockResolvedValue({ _id: 'client-id' });
+
+      const req = {
+        body: { content: 'Question ?' },
+        params: { id: 'req-id' },
+        user: { _id: 'uid', prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' },
+      } as unknown as AuthRequest;
+
+      await sendMessage(req, res as Response);
+
+      expect(sendPushToUser).toHaveBeenCalledWith('client-id', expect.objectContaining({ requestId: 'req-id' }));
+    });
   });
 
   // ── replyByToken ─────────────────────────────────────────────────
@@ -386,6 +412,22 @@ describe('messageController', () => {
       await listClientThreads(req, res as Response);
 
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ threads: expect.any(Array) }));
+    });
+
+    it('falls back to "Prestataire" when prestataire not in name map', async () => {
+      const requests = [{
+        _id: 'req-2', prestataireId: { toString: () => 'unknown-prest' },
+        status: 'scheduled', messages: [{ fromRole: 'provider', content: 'Bonjour' }],
+        createdAt: new Date(),
+      }];
+      mockSRFind.mockReturnValue({ select: jest.fn().mockReturnValue({ sort: jest.fn().mockResolvedValue(requests) }) });
+      (User as any).find = jest.fn().mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+
+      const req = { user: { _id: 'uid', email: 'client@example.com' } } as unknown as AuthRequest;
+      await listClientThreads(req, res as Response);
+
+      const thread = (json.mock.calls[0][0] as any).threads[0];
+      expect(thread.prestataireName).toBe('Prestataire');
     });
   });
 

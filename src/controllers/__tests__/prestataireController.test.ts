@@ -211,6 +211,19 @@ describe('prestataireController', () => {
       expect(mockPrestCreate).toHaveBeenCalledWith(expect.objectContaining({ is_validated: false }));
       expect(status).toHaveBeenCalledWith(201);
     });
+
+    it('defaults prestations to [] when not provided', async () => {
+      mockPrestCreate.mockResolvedValue(makePrestataire());
+      const req = {
+        user: makeUser(),
+        prestataire: null,
+        body: { ville: 'Lyon' },
+      } as unknown as AuthRequest;
+
+      await addPrestataireProfile(req, res as Response);
+
+      expect(mockPrestCreate).toHaveBeenCalledWith(expect.objectContaining({ prestations: [] }));
+    });
   });
 
   // ── updateMyPrestataire ───────────────────────────────────────────
@@ -315,6 +328,19 @@ describe('prestataireController', () => {
       mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue(prests) });
 
       await searchPrestataires({ query: { q: 'dupont' } } as unknown as Request, res as Response);
+
+      const { total } = json.mock.calls[0][0];
+      expect(total).toBe(1);
+    });
+
+    it('filters results by q matching prestation', async () => {
+      const prests = [
+        makePrestForSearch({ userId: { _id: 'u1', nom: 'Martin', prenom: 'Paul' }, prestations: ['Elagage'], ville: undefined }),
+        makePrestForSearch({ userId: { _id: 'u2', nom: 'Durand', prenom: 'Marc' }, prestations: ['Tonte'] }),
+      ];
+      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue(prests) });
+
+      await searchPrestataires({ query: { q: 'elagage' } } as unknown as Request, res as Response);
 
       const { total } = json.mock.calls[0][0];
       expect(total).toBe(1);
