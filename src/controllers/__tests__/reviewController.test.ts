@@ -89,6 +89,18 @@ describe('reviewController', () => {
     expect(json).toHaveBeenCalledWith({ ok: true });
   });
 
+  it('returns 400 when token is not found in submitReview', async () => {
+    mockSRFindOne.mockResolvedValue(null);
+
+    await submitReview(
+      { body: { token: 'bad-token', ratings: { time: 5, quality: 5, sympathy: 5, value: 5, punctuality: 5 } } } as unknown as Request,
+      res as Response
+    );
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(json).toHaveBeenCalledWith({ error: 'Lien invalide ou expiré' });
+  });
+
   it('rejects invalid rating values', async () => {
     const request = { save: jest.fn() } as any;
     mockSRFindOne.mockResolvedValue(request);

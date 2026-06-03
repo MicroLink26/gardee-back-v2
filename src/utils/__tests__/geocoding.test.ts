@@ -21,4 +21,12 @@ describe('geocodeAddress', () => {
 
     expect(coords).toBeNull();
   });
+
+  it('returns null when the HTTP request throws', async () => {
+    mockedAxios.get.mockRejectedValue(new Error('Network error'));
+
+    const coords = await geocodeAddress('1 rue de Paris', '75000', 'Paris');
+
+    expect(coords).toBeNull();
+  });
 });

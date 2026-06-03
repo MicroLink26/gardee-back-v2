@@ -1,8 +1,29 @@
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
-import { randomHex, signAccessToken } from '../tokens';
+import { randomHex, signAccessToken, createRefreshToken } from '../tokens';
+
+jest.mock('../../models/RefreshToken', () => ({
+  RefreshToken: { create: jest.fn() },
+}));
+
+jest.mock('nanoid', () => ({ nanoid: jest.fn().mockReturnValue('nanoid-token-48chars') }));
 
 describe('tokens utils', () => {
+  describe('createRefreshToken', () => {
+    it('stores a new token in DB and returns it', async () => {
+      const { RefreshToken } = jest.requireMock('../../models/RefreshToken');
+      RefreshToken.create.mockResolvedValue({});
+
+      const userId = new Types.ObjectId();
+      const token = await createRefreshToken(userId);
+
+      expect(token).toBe('nanoid-token-48chars');
+      expect(RefreshToken.create).toHaveBeenCalledWith(
+        expect.objectContaining({ token: 'nanoid-token-48chars', user: userId })
+      );
+    });
+  });
+
   describe('randomHex', () => {
     it('returns a hex string of double the byte length', () => {
       const result = randomHex(16);

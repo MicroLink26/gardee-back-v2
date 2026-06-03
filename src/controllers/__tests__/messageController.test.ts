@@ -104,6 +104,31 @@ describe('messageController', () => {
       expect(status).toHaveBeenCalledWith(400);
     });
 
+    it('uses requesterEmail as clientName when requesterPrenom is absent', async () => {
+      const saveMock = jest.fn();
+      const request = {
+        messages: [],
+        messageToken: 'tok',
+        messageTokenExpiresAt: new Date(Date.now() + 86400000),
+        requesterEmail: 'anon@example.com',
+        requesterPrenom: undefined,
+        prestataireId: 'prest-id',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindById.mockResolvedValue(null);
+
+      await replyByToken(
+        { body: { token: 'tok', content: 'Réponse' } } as Request,
+        res as Response
+      );
+
+      expect(request.messages.push).toHaveBeenCalledWith(
+        expect.objectContaining({ fromName: 'anon@example.com' })
+      );
+    });
+
     it('saves the reply and rotates the token', async () => {
       const saveMock = jest.fn();
       const request = {
