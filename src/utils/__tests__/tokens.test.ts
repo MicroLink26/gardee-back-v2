@@ -62,5 +62,18 @@ describe('tokens utils', () => {
       expect(typeof decoded.exp).toBe('number');
       expect(typeof decoded.iat).toBe('number');
     });
+
+    it('defaults TTL to 15 minutes when ACCESS_TTL_MINUTES is unset', () => {
+      delete process.env.ACCESS_TTL_MINUTES;
+
+      const objectId = new Types.ObjectId();
+      const token = signAccessToken(objectId);
+      const decoded = jwt.verify(token, 'test-secret') as jwt.JwtPayload;
+
+      const ttl = decoded.exp! - decoded.iat!;
+      expect(ttl).toBe(15 * 60);
+
+      process.env.ACCESS_TTL_MINUTES = '1';
+    });
   });
 });

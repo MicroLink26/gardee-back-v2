@@ -111,6 +111,15 @@ describe('emailService', () => {
     expect(mockedSendMail.mock.calls[0][2]).toContain('client@example.com');
   });
 
+  it('sendRequestToProvider — trims name when requesterNom is absent', async () => {
+    await sendRequestToProvider(
+      request({ requesterPrenom: 'Marie', requesterNom: undefined }),
+      user()
+    );
+
+    expect(mockedSendMail.mock.calls[0][2]).toContain('Marie');
+  });
+
   it('sendRequestToProvider — includes address and description when present', async () => {
     await sendRequestToProvider(
       request({ address: '12 rue des Lilas', description: 'Haie à tailler', desiredAt: new Date('2025-06-15T09:00:00Z') }),
@@ -137,6 +146,12 @@ describe('emailService', () => {
     expect(to).toBe('client@example.com');
     expect(subject).toBe('Votre demande a été acceptée');
     expect(body).toContain('Jean Dupont');
+  });
+
+  it('sendProviderAcceptedEmail — includes confirmed date when desiredAt is set', async () => {
+    await sendProviderAcceptedEmail(request({ desiredAt: new Date('2025-08-01T10:00:00Z') }), user());
+
+    expect(mockedSendMail.mock.calls[0][2]).toContain('Date confirmée');
   });
 
   // ── sendProviderProposedEmail ──────────────────────────────────────
@@ -183,6 +198,16 @@ describe('emailService', () => {
     );
 
     expect(mockedSendMail.mock.calls[0][2]).toContain('client@example.com');
+  });
+
+  it('sendClientRefusedProposalEmail — trims name when requesterNom is absent', async () => {
+    await sendClientRefusedProposalEmail(
+      request({ requesterPrenom: 'Marie', requesterNom: undefined }),
+      user(),
+      new Date()
+    );
+
+    expect(mockedSendMail.mock.calls[0][2]).toContain('Marie');
   });
 
   // ── sendProviderRefusedEmail ───────────────────────────────────────
@@ -295,5 +320,21 @@ describe('emailService', () => {
       'Réinitialisation de votre mot de passe',
       expect.stringContaining('https://app.gardee.test/app/forgot-password?token=reset-token-123')
     );
+  });
+
+  it('FRONT_URL and APP_URL fall back to gardee.fr when env vars are unset', async () => {
+    const savedApp = process.env.APP_URL;
+    const savedFront = process.env.FRONT_URL;
+    delete process.env.APP_URL;
+    delete process.env.FRONT_URL;
+
+    await sendProviderRefusedEmail(request(), user());     // covers FRONT_URL fallback
+    await sendForgotPasswordEmail('u@example.com', 'tok'); // covers APP_URL fallback
+
+    const bodies = mockedSendMail.mock.calls.map(c => c[2]);
+    expect(bodies.some(b => b.includes('https://gardee.fr'))).toBe(true);
+
+    process.env.APP_URL = savedApp;
+    process.env.FRONT_URL = savedFront;
   });
 });

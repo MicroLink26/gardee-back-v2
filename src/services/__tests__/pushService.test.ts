@@ -86,6 +86,27 @@ describe('pushService', () => {
     expect(mockDeleteMany).not.toHaveBeenCalled();
   });
 
+  it('configures VAPID details when VAPID_PUBLIC_KEY is set', async () => {
+    const savedPub = process.env.VAPID_PUBLIC_KEY;
+    const savedPriv = process.env.VAPID_PRIVATE_KEY;
+    process.env.VAPID_PUBLIC_KEY = 'test-pub-key';
+    process.env.VAPID_PRIVATE_KEY = 'test-priv-key';
+    mockFind.mockResolvedValue([]);
+
+    await sendPushToUser(userId, payload);
+
+    expect(webpush.setVapidDetails).toHaveBeenCalledWith(
+      expect.any(String),
+      'test-pub-key',
+      'test-priv-key'
+    );
+
+    if (savedPub === undefined) delete process.env.VAPID_PUBLIC_KEY;
+    else process.env.VAPID_PUBLIC_KEY = savedPub;
+    if (savedPriv === undefined) delete process.env.VAPID_PRIVATE_KEY;
+    else process.env.VAPID_PRIVATE_KEY = savedPriv;
+  });
+
   it('sends partial batch — removes stale, keeps valid', async () => {
     mockFind.mockResolvedValue([
       sub('https://valid.endpoint/ok'),
