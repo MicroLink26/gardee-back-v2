@@ -12,6 +12,13 @@ const config: Config.InitialOptions = {
     '^.+\\.js$': 'ts-jest',
   },
   transformIgnorePatterns: ['/node_modules/(?!(nanoid)/)'],
+  collectCoverageFrom: [
+    'src/controllers/**/*.ts',
+    'src/services/**/*.ts',
+    'src/middlewares/**/*.ts',
+    'src/utils/**/*.ts',
+    '!src/**/__tests__/**',
+  ],
 };
 
 export default config;
