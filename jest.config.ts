@@ -16,6 +16,7 @@ const config: Config.InitialOptions = {
     'src/app.ts',
     'src/config/**/*.ts',
     'src/controllers/**/*.ts',
+    'src/routes/**/*.ts',
     'src/services/**/*.ts',
     'src/middlewares/**/*.ts',
     'src/utils/**/*.ts',
