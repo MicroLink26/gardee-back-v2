@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { sendMessage, replyByToken, getThreadByToken, getMessages, listThreads, clientSendMessage } from '../messageController';
+import { sendMessage, replyByToken, getThreadByToken, getMessages, listThreads, listClientThreads, clientSendMessage } from '../messageController';
 import { ServiceRequest } from '../../models/ServiceRequest';
 import { User } from '../../models/User';
 import { AuthRequest } from '../../types';
@@ -9,7 +9,7 @@ jest.mock('../../models/ServiceRequest', () => ({
 }));
 
 jest.mock('../../models/User', () => ({
-  User: { findById: jest.fn() },
+  User: { findById: jest.fn(), findOne: jest.fn().mockResolvedValue(null) },
 }));
 
 jest.mock('../../services/emailService', () => ({
@@ -17,10 +17,15 @@ jest.mock('../../services/emailService', () => ({
   sendMessageToProviderEmail: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('../../services/pushService', () => ({
+  sendPushToUser: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('messageController', () => {
   const mockSRFindOne = ServiceRequest.findOne as jest.Mock;
   const mockSRFind = ServiceRequest.find as jest.Mock;
   const mockUserFindById = User.findById as jest.Mock;
+  const mockUserFindOne = User.findOne as jest.Mock;
 
   let res: Partial<Response>;
   let json: jest.Mock;
@@ -360,6 +365,29 @@ describe('messageController', () => {
     });
   });
 
+  // ── listClientThreads ─────────────────────────────────────────────
+
+  describe('listClientThreads', () => {
+    it('returns threads with prestataire name for the client', async () => {
+      const prestId = 'prest-id';
+      const requests = [{
+        _id: 'req-1', prestataireId: { toString: () => prestId },
+        status: 'scheduled', messages: [{ fromRole: 'provider', content: 'Bonjour' }],
+        createdAt: new Date(),
+      }];
+      mockSRFind.mockReturnValue({ select: jest.fn().mockReturnValue({ sort: jest.fn().mockResolvedValue(requests) }) });
+      mockUserFindOne.mockResolvedValue(null);
+      mockUserFindById.mockReturnValue({ select: jest.fn().mockResolvedValue([{ _id: prestId, prenom: 'Jean', nom: 'Dupont', toObject: () => ({}) }]) });
+      // Use findById mock for User.find
+      (User as any).find = jest.fn().mockReturnValue({ select: jest.fn().mockResolvedValue([{ _id: { toString: () => prestId }, prenom: 'Jean', nom: 'Dupont' }]) });
+
+      const req = { user: { _id: 'uid', email: 'client@example.com' } } as unknown as AuthRequest;
+      await listClientThreads(req, res as Response);
+
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ threads: expect.any(Array) }));
+    });
+  });
+
   // ── clientSendMessage ─────────────────────────────────────────────
 
   describe('clientSendMessage', () => {
@@ -413,6 +441,27 @@ describe('messageController', () => {
 
       expect(saveMock).toHaveBeenCalled();
       expect(sendMessageToProviderEmail).toHaveBeenCalled();
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    });
+
+    it('does not call push when client user not found', async () => {
+      const { sendPushToUser } = jest.requireMock('../../services/pushService');
+      const saveMock = jest.fn();
+      const request = {
+        messages: [], messageToken: undefined, messageTokenExpiresAt: undefined,
+        requesterEmail: 'unknown@example.com', save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindOne.mockResolvedValue(null);
+
+      const req = {
+        body: { content: 'Bonjour' }, params: { id: 'req-id' },
+        user: { _id: 'uid', prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' },
+      } as unknown as AuthRequest;
+      await sendMessage(req, res as Response);
+
+      expect(sendPushToUser).not.toHaveBeenCalled();
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     });
 

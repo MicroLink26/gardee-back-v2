@@ -28,9 +28,10 @@ router.post('/:id/provider/cancel', isConnected, isPrestataire, req.providerCanc
 router.post('/:id/complete', isConnected, isPrestataire, req.markComplete);
 
 // Messaging
-router.get('/messages/thread', msg.getThreadByToken);          // public — token client
-router.post('/messages/reply', msg.replyByToken);              // public — token client
-router.get('/messages/threads', isConnected, isPrestataire, msg.listThreads); // prestataire — liste des fils
+router.get('/messages/thread', msg.getThreadByToken);                           // public — token client
+router.post('/messages/reply', msg.replyByToken);                               // public — token client
+router.get('/messages/client-threads', isConnected, msg.listClientThreads);     // client connecté — ses fils
+router.get('/messages/threads', isConnected, isPrestataire, msg.listThreads);   // prestataire — liste des fils
 router.get('/:id/messages', isConnected, isPrestataire, msg.getMessages);     // prestataire — fil d'une demande
 router.post('/:id/message', isConnected, isPrestataire, msg.sendMessage);     // prestataire — envoyer
 router.post('/:id/client/message', isConnected, msg.clientSendMessage);       // client connecte — repondre

@@ -4,6 +4,7 @@ import { ServiceRequest } from '../models/ServiceRequest';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
 import { sendMessageToClientEmail, sendMessageToProviderEmail } from '../services/emailService';
+import { sendPushToUser } from '../services/pushService';
 
 // Prestataire envoie un message au client (auth requise)
 export async function sendMessage(req: AuthRequest, res: Response): Promise<void> {
@@ -38,6 +39,16 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
   await request.save();
 
   await sendMessageToClientEmail(request, fromName, content.trim(), token).catch(() => {});
+
+  // Push notification au client si compte enregistré
+  const clientUser = await User.findOne({ email: request.requesterEmail });
+  if (clientUser) {
+    sendPushToUser(clientUser._id, {
+      title: `Message de ${fromName}`,
+      body: content.trim().slice(0, 100),
+      url: '/app/messagerie',
+    }).catch(() => {});
+  }
 
   res.json({ ok: true, messages: request.messages });
 }
@@ -81,6 +92,11 @@ export async function replyByToken(req: Request, res: Response): Promise<void> {
   const prestataire = await User.findById(request.prestataireId);
   if (prestataire) {
     await sendMessageToProviderEmail(request, prestataire, clientName, content.trim()).catch(() => {});
+    sendPushToUser(prestataire._id, {
+      title: `Réponse de ${clientName}`,
+      body: content.trim().slice(0, 100),
+      url: '/app/messagerie',
+    }).catch(() => {});
   }
 
   res.json({ ok: true, newToken });
@@ -143,6 +159,32 @@ export async function listThreads(req: AuthRequest, res: Response): Promise<void
   res.json({ threads });
 }
 
+// Lister les fils de messages pour le client connecte
+export async function listClientThreads(req: AuthRequest, res: Response): Promise<void> {
+  const requests = await ServiceRequest.find({
+    $or: [{ clientId: req.user!._id }, { requesterEmail: req.user!.email }],
+    'messages.0': { $exists: true },
+  })
+    .select('messages status createdAt updatedAt prestataireId')
+    .sort({ updatedAt: -1 });
+
+  const prestataireIds = [...new Set(requests.map(r => r.prestataireId.toString()))];
+  const prestataires = await User.find({ _id: { $in: prestataireIds } }).select('nom prenom');
+  const nameMap = new Map(prestataires.map(p => [p._id.toString(), `${p.prenom} ${p.nom}`.trim()]));
+
+  const threads = requests.map(r => ({
+    _id: r._id,
+    prestataireName: nameMap.get(r.prestataireId.toString()) ?? 'Prestataire',
+    status: r.status,
+    messageCount: r.messages.length,
+    lastMessage: r.messages[r.messages.length - 1],
+    messages: r.messages,
+    createdAt: r.createdAt,
+  }));
+
+  res.json({ threads });
+}
+
 // Client connecte envoie un message (demande client)
 export async function clientSendMessage(req: AuthRequest, res: Response): Promise<void> {
   const { content } = req.body as { content: string };
@@ -174,6 +216,11 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
   const prestataire = await User.findById(request.prestataireId);
   if (prestataire) {
     await sendMessageToProviderEmail(request, prestataire, clientName, content.trim()).catch(() => {});
+    sendPushToUser(prestataire._id, {
+      title: `Réponse de ${clientName}`,
+      body: content.trim().slice(0, 100),
+      url: '/app/messagerie',
+    }).catch(() => {});
   }
 
   res.json({ ok: true, messages: request.messages });
