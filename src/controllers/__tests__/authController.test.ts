@@ -140,6 +140,23 @@ describe('authController', () => {
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'access-token-mock' }));
     });
 
+    it('completes successfully even when welcome email fails', async () => {
+      const { sendWelcomeClientEmail } = jest.requireMock('../../services/emailService');
+      sendWelcomeClientEmail.mockRejectedValueOnce(new Error('SMTP down'));
+      mockUserFindOne.mockResolvedValue(null);
+      mockUserCreate.mockResolvedValue({
+        _id: 'new-id', email: 'u@example.com', nom: 'D', prenom: 'J', role: 'user',
+        toObject: () => ({ _id: 'new-id' }),
+      });
+
+      await register(
+        { body: { email: 'u@example.com', password: 'pass1234', nom: 'D', prenom: 'J' } } as Request,
+        res as Response
+      );
+
+      expect(status).toHaveBeenCalledWith(201);
+    });
+
     it('returns 409 when email already exists', async () => {
       mockUserFindOne.mockResolvedValue({ _id: 'existing' });
 

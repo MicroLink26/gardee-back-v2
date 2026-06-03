@@ -84,6 +84,35 @@ describe('messageController', () => {
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     });
 
+    it('completes successfully when email and push both fail', async () => {
+      const { sendMessageToClientEmail } = jest.requireMock('../../services/emailService');
+      const { sendPushToUser } = jest.requireMock('../../services/pushService');
+      sendMessageToClientEmail.mockRejectedValueOnce(new Error('SMTP down'));
+      sendPushToUser.mockRejectedValueOnce(new Error('Push down'));
+      const saveMock = jest.fn();
+      const request = {
+        _id: 'req-id',
+        messages: [],
+        messageToken: undefined,
+        messageTokenExpiresAt: undefined,
+        requesterEmail: 'client@example.com',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindOne.mockResolvedValue({ _id: 'client-id' });
+
+      const req = {
+        body: { content: 'Test' },
+        params: { id: 'req-id' },
+        user: { _id: 'uid', prenom: 'Jean', nom: 'Dupont', email: 'jean@example.com' },
+      } as unknown as AuthRequest;
+
+      await sendMessage(req, res as Response);
+
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    });
+
     it('sends push to client when client user is found', async () => {
       const { sendPushToUser } = jest.requireMock('../../services/pushService');
       const saveMock = jest.fn();
@@ -211,6 +240,35 @@ describe('messageController', () => {
       expect(saveMock).toHaveBeenCalled();
       expect(request.messageToken).not.toBe('old-token');
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, newToken: expect.any(String) }));
+    });
+
+    it('completes successfully when email and push both fail', async () => {
+      const { sendMessageToProviderEmail } = jest.requireMock('../../services/emailService');
+      const { sendPushToUser } = jest.requireMock('../../services/pushService');
+      sendMessageToProviderEmail.mockRejectedValueOnce(new Error('SMTP down'));
+      sendPushToUser.mockRejectedValueOnce(new Error('Push down'));
+      const saveMock = jest.fn();
+      const request = {
+        _id: 'req-id',
+        messages: [],
+        messageToken: 'tok',
+        messageTokenExpiresAt: new Date(Date.now() + 86400000),
+        requesterEmail: 'client@example.com',
+        requesterPrenom: 'Marie',
+        requesterNom: 'Curie',
+        prestataireId: 'prest-id',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindById.mockResolvedValue({ _id: 'prest-id', prenom: 'Jean', nom: 'Dupont' });
+
+      await replyByToken(
+        { body: { token: 'tok', content: 'Réponse' } } as Request,
+        res as Response
+      );
+
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     });
   });
 
@@ -529,6 +587,33 @@ describe('messageController', () => {
       await clientSendMessage(req, res as Response);
 
       expect(saveMock).toHaveBeenCalled();
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+    });
+
+    it('completes successfully when email and push both fail', async () => {
+      const { sendMessageToProviderEmail } = jest.requireMock('../../services/emailService');
+      const { sendPushToUser } = jest.requireMock('../../services/pushService');
+      sendMessageToProviderEmail.mockRejectedValueOnce(new Error('SMTP down'));
+      sendPushToUser.mockRejectedValueOnce(new Error('Push down'));
+      const saveMock = jest.fn();
+      const request = {
+        _id: 'req-id',
+        messages: [],
+        prestataireId: 'prest-id',
+        save: saveMock,
+      } as any;
+      request.messages.push = jest.fn();
+      mockSRFindOne.mockResolvedValue(request);
+      mockUserFindById.mockResolvedValue({ _id: 'prest-id', prenom: 'Jean', nom: 'Dupont' });
+
+      const req = {
+        body: { content: 'Test' },
+        params: { id: 'req-id' },
+        user: { _id: 'uid', email: 'client@example.com', prenom: 'Marie', nom: 'Curie' },
+      } as unknown as AuthRequest;
+
+      await clientSendMessage(req, res as Response);
+
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
     });
   });
