@@ -112,6 +112,19 @@ export async function login(req: Request, res: Response): Promise<void> {
     res.status(401).json({ error: 'Identifiants invalides' });
     return;
   }
+  if (!user.emailVerified) {
+    // Renew verification code if expired
+    if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      user.emailVerificationCode = code;
+      user.emailVerificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await user.save();
+      sendEmailVerificationCode(user, code).catch(() => {});
+    }
+    res.status(403).json({ requiresVerification: true, userId: user._id.toString() });
+    return;
+  }
+
   user.last_login = new Date();
   await user.save();
 
