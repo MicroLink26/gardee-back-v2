@@ -1,6 +1,14 @@
 import { sendMail } from '../config/mailer';
 import { IServiceRequest } from '../models/ServiceRequest';
 import { IUser } from '../models/User';
+import { Category } from '../models/Category';
+
+async function resolvePrestation(ids: string[]): Promise<string> {
+  if (!ids.length) return '';
+  const cats = await Category.find({ _id: { $in: ids } }).select('name').lean();
+  const nameMap = new Map(cats.map(c => [c._id.toString(), c.name]));
+  return ids.map(id => nameMap.get(id) ?? id).join(', ');
+}
 
 const FRONT_URL = () => process.env.FRONT_URL ?? 'https://gardee.fr';
 const APP_URL = () => process.env.APP_URL ?? 'https://gardee.fr';
@@ -131,6 +139,9 @@ export async function sendRequestToProvider(
   const dateStr = request.desiredAt
     ? new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : null;
+  const servicesStr = request.prestations.length
+    ? await resolvePrestation(request.prestations)
+    : '';
 
   await sendMail(
     prestataire.email,
@@ -142,7 +153,7 @@ export async function sendRequestToProvider(
       <div class="info-box">
         <p><strong>Contact :</strong> ${request.requesterEmail}</p>
         ${request.address ? `<p><strong>Adresse :</strong> ${request.address}</p>` : ''}
-        ${request.prestations.length ? `<p><strong>Service(s) :</strong> ${request.prestations.join(', ')}</p>` : ''}
+        ${servicesStr ? `<p><strong>Service(s) :</strong> ${servicesStr}</p>` : ''}
         ${dateStr ? `<p><strong>Date souhaitée :</strong> ${dateStr}</p>` : ''}
         ${request.description ? `<p><strong>Description :</strong> ${request.description}</p>` : ''}
       </div>
