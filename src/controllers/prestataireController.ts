@@ -13,6 +13,12 @@ import { sendWelcomeEmail, sendEmailVerificationCode } from '../services/emailSe
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
 
+function toArray(v: unknown): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(String);
+  return [String(v)];
+}
+
 export async function registerPrestataire(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>;
   const { email, password, nom, prenom, telephone } = body;
@@ -49,7 +55,7 @@ export async function registerPrestataire(req: Request, res: Response): Promise<
 
   const prestataire = await Prestataire.create({
     userId: user._id,
-    prestations: body.prestations ?? [],
+    prestations: toArray(body.prestations),
     tarifHoraire: body.tarifHoraire,
     description: body.description,
     adresse: body.adresse,
@@ -95,7 +101,7 @@ export async function addPrestataireProfile(req: AuthRequest, res: Response): Pr
   const body = req.body as Record<string, unknown>;
   const prestataire = await Prestataire.create({
     userId: req.user!._id,
-    prestations: body.prestations ?? [],
+    prestations: toArray(body.prestations),
     tarifHoraire: body.tarifHoraire,
     description: body.description,
     adresse: body.adresse,
@@ -126,7 +132,8 @@ export async function updateMyPrestataire(req: AuthRequest, res: Response): Prom
   let needsRevalidation = false;
   for (const field of EDITABLE) {
     if (body[field] !== undefined) {
-      (prest as unknown as Record<string, unknown>)[field] = body[field];
+      const value = field === 'prestations' ? toArray(body[field]) : body[field];
+      (prest as unknown as Record<string, unknown>)[field] = value;
       if (REVALIDATION_FIELDS.includes(field)) needsRevalidation = true;
     }
   }
