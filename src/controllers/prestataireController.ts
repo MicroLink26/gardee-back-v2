@@ -165,7 +165,11 @@ export async function searchPrestataires(req: Request, res: Response): Promise<v
   const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
   const prestFilter: Record<string, unknown> = { is_validated: true };
-  if (prestation) prestFilter.prestations = prestation;
+  if (prestation) {
+    const { Category } = await import('../models/Category');
+    const cat = await Category.findById(prestation).select('name');
+    prestFilter.prestations = cat ? { $in: [prestation, cat.name] } : prestation;
+  }
   if (ville) prestFilter.ville = new RegExp(escapeRegExp(ville), 'i');
 
   if (sort === 'distance' && lat && lng) {
@@ -221,7 +225,11 @@ export async function getRanking(req: Request, res: Response): Promise<void> {
   const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
   const filter: Record<string, unknown> = { is_validated: true };
-  if (prestation) filter.prestations = prestation;
+  if (prestation) {
+    const { Category } = await import('../models/Category');
+    const cat = await Category.findById(prestation).select('name');
+    filter.prestations = cat ? { $in: [prestation, cat.name] } : prestation;
+  }
   if (ville) filter.ville = new RegExp(escapeRegExp(ville), 'i');
 
   const [prests, total] = await Promise.all([

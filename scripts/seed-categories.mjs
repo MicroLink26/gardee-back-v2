@@ -10,13 +10,16 @@ const MONGO_URL = env.match(/^MONGO_URL=(.+)$/m)?.[1]?.trim();
 if (!MONGO_URL) { console.error('MONGO_URL not found in .env'); process.exit(1); }
 
 const CATEGORIES = [
-  { _id: '68cbf2631d630ebaab3e9235', name: 'Entretien des espaces vert',                               description: 'Entretien des espaces vert' },
-  { _id: '68cbf2631d630ebaab3e9236', name: 'Nettoyage et entretien de piscine',                        description: '' },
-  { _id: '68cbf2631d630ebaab3e9237', name: 'Travaux légers de bricolage',                              description: '' },
+  { _id: '68cbf2631d630ebaab3e9235', name: 'Entretien des espaces vert',                                description: 'Entretien des espaces vert' },
+  { _id: '68cbf2631d630ebaab3e9236', name: 'Nettoyage et entretien de piscine',                         description: '' },
+  { _id: '68cbf2631d630ebaab3e9237', name: 'Travaux légers de bricolage',                               description: '' },
   { _id: '68cbf2631d630ebaab3e9238', name: 'Nettoyage spécialisé (inclut le néttoyage haute pression)', description: '' },
-  { _id: '68cbf2631d630ebaab3e9239', name: 'Élagage',                                                   description: '' },
-  { _id: '68cbf2631d630ebaab3e923a', name: 'Paysagiste',                                                description: '' },
-  { _id: '68cbf2631d630ebaab3e923b', name: 'Jardinage entre voisins (hors professionnel)',              description: '' },
+  { _id: '68cbf2631d630ebaab3e9239', name: 'Élagage',                                                    description: '' },
+  { _id: '68cbf2631d630ebaab3e923a', name: 'Paysagiste',                                                 description: '' },
+  { _id: '68cbf2631d630ebaab3e923b', name: 'Jardinage entre voisins (hors professionnel)',               description: '' },
+  { _id: '6a19b9188444078eeab01672', name: 'Tonte',                                                      description: '' },
+  { _id: '6a19b9188444078eeab01673', name: 'Taille de haies',                                            description: '' },
+  { _id: '68cbf2631d630ebaab3e923c', name: 'Débroussaillage',                                            description: '' },
 ];
 
 const client = new MongoClient(MONGO_URL);
