@@ -16,6 +16,14 @@ export interface IUser extends Document {
   date_joined: Date;
   createdAt: Date;
   updatedAt: Date;
+  bannedPermanently: boolean;
+  rejectedTemporarily: boolean;
+  rejectionReason?: string;
+  rejectedAt?: Date;
+  rejectionPingShown: boolean;
+  emailVerified: boolean;
+  emailVerificationCode?: string;
+  emailVerificationExpiresAt?: Date;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -31,6 +39,14 @@ const UserSchema = new Schema<IUser>(
     is_validated: { type: Boolean, default: true },
     last_login: { type: Date },
     date_joined: { type: Date, default: Date.now },
+    bannedPermanently: { type: Boolean, default: false },
+    rejectedTemporarily: { type: Boolean, default: false },
+    rejectionReason: { type: String },
+    rejectedAt: { type: Date },
+    rejectionPingShown: { type: Boolean, default: false },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationCode: { type: String },
+    emailVerificationExpiresAt: { type: Date },
   },
   { timestamps: true }
 );

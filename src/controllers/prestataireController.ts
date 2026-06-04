@@ -9,7 +9,7 @@ import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
 import { geocodeAddress } from '../utils/geocoding';
 import { uploadProfileImage } from '../utils/fileUpload';
-import { sendWelcomeEmail } from '../services/emailService';
+import { sendWelcomeEmail, sendEmailVerificationCode } from '../services/emailService';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
 
@@ -23,12 +23,17 @@ export async function registerPrestataire(req: Request, res: Response): Promise<
   }
 
   const exists = await User.findOne({ email: (email as string).toLowerCase() });
+  if (exists?.bannedPermanently) {
+    res.status(403).json({ error: 'Cette adresse email ne peut plus être utilisée sur Gardee.' });
+    return;
+  }
   if (exists) {
     res.status(409).json({ error: 'Email déjà utilisé' });
     return;
   }
 
   const passwordHash = await bcrypt.hash(password as string, 12);
+  const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
   const user = await User.create({
     email: (email as string).toLowerCase(),
     passwordHash,
@@ -37,6 +42,9 @@ export async function registerPrestataire(req: Request, res: Response): Promise<
     cgu: body.cgu ?? false,
     consentDataProcessing: body.consentDataProcessing ?? false,
     is_validated: true,
+    emailVerified: false,
+    emailVerificationCode: verificationCode,
+    emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
   });
 
   const prestataire = await Prestataire.create({
@@ -75,8 +83,8 @@ export async function registerPrestataire(req: Request, res: Response): Promise<
     }
   });
 
-  await sendWelcomeEmail(user).catch(() => {});
-  res.status(201).json({ ok: true, detail: 'Prestataire créé, en attente de validation.' });
+  await sendEmailVerificationCode(user, verificationCode).catch(() => {});
+  res.status(201).json({ ok: true, requiresVerification: true, userId: user._id.toString(), detail: 'Prestataire créé — vérifiez votre email.' });
 }
 
 export async function addPrestataireProfile(req: AuthRequest, res: Response): Promise<void> {
@@ -111,22 +119,30 @@ export async function updateMyPrestataire(req: AuthRequest, res: Response): Prom
   }
   const EDITABLE = ['prestations', 'tarifHoraire', 'description', 'adresse', 'codePostal',
     'ville', 'contactCom', 'materielOK', 'isEntrepreneur', 'siret', 'qualifElagage'];
+  const REVALIDATION_FIELDS = ['prestations', 'tarifHoraire', 'description', 'isEntrepreneur', 'siret', 'qualifElagage'];
   const body = req.body as Record<string, unknown>;
   const prest = req.prestataire;
 
+  let needsRevalidation = false;
   for (const field of EDITABLE) {
     if (body[field] !== undefined) {
       (prest as unknown as Record<string, unknown>)[field] = body[field];
+      if (REVALIDATION_FIELDS.includes(field)) needsRevalidation = true;
     }
   }
 
   if ((req as Request & { files?: Record<string, unknown> }).files?.photo) {
     const file = ((req as Request & { files?: Record<string, unknown> }).files as Record<string, UploadedFile>).photo;
     prest.profil_image = await uploadProfileImage(file, req.user!._id.toString());
+    needsRevalidation = true;
+  }
+
+  if (needsRevalidation && prest.is_validated) {
+    prest.is_validated = false;
   }
 
   await prest.save();
-  res.json({ user: serializeUser(req.user!, prest) });
+  res.json({ user: serializeUser(req.user!, prest), revalidationRequired: needsRevalidation });
 }
 
 export async function getPublicProfile(req: Request, res: Response): Promise<void> {
@@ -249,7 +265,7 @@ export async function getReviews(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const filter = { prestataireId: id, ratingDetails: { $exists: true } };
+  const filter = { prestataireId: id, ratingDetails: { $exists: true }, reviewApproved: { $ne: false } };
   const [items, total] = await Promise.all([
     ServiceRequest.find(filter)
       .select('ratingDetails ratingComment recommend ratingGivenAt desiredAt prestations requesterPrenom requesterNom')
@@ -264,6 +280,23 @@ export async function getReviews(req: Request, res: Response): Promise<void> {
     prestataire: { _id: u._id, nom: u.nom, prenom: u.prenom, averageRating: prestataire.averageRating, numberOfReviews: prestataire.numberOfReviews },
     items, total, page: parseInt(page), pageSize: parseInt(pageSize),
   });
+}
+
+export async function deleteMyPrestataire(req: AuthRequest, res: Response): Promise<void> {
+  if (!req.prestataire) {
+    res.status(404).json({ error: 'Profil prestataire introuvable' });
+    return;
+  }
+  await req.prestataire.deleteOne();
+  res.json({ ok: true, detail: 'Profil prestataire supprimé.' });
+}
+
+export async function getAllPrestataireIds(req: Request, res: Response): Promise<void> {
+  const prests = await Prestataire.find({ is_validated: true })
+    .populate<{ userId: { _id: string } }>('userId', '_id')
+    .select('userId');
+  const ids = prests.map(p => (p.userId as unknown as { _id: string })._id.toString());
+  res.json({ ids });
 }
 
 export async function geocodePrestataire(req: Request, res: Response): Promise<void> {

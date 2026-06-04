@@ -5,18 +5,83 @@ import { IUser } from '../models/User';
 const FRONT_URL = () => process.env.FRONT_URL ?? 'https://gardee.fr';
 const APP_URL = () => process.env.APP_URL ?? 'https://gardee.fr';
 
-const emailFooter = `
-<p>L'équipe Gardee</p>
-<hr style="border:none;border-top:1px solid #e9e5d6;margin:1.5rem 0" />
-<p style="font-size:0.78rem;color:#9ca3af">Si ce message vous semble frauduleux ou que vous n'en êtes pas à l'origine, merci de nous le signaler à <a href="mailto:info@gardee.fr" style="color:#9ca3af">info@gardee.fr</a>.</p>`;
+// ── Shared template wrapper ──────────────────────────────────────────────────
+
+function layout(content: string, preheader = ''): string {
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gardee</title>
+  <style>
+    body { margin:0; padding:0; background:#f2efe6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+    .wrap { max-width:600px; margin:0 auto; padding:24px 16px; }
+    .card { background:#FCFAF5; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.07); }
+    .header { background:linear-gradient(135deg,#1a2410 0%,#2d4a1a 60%,#3a5020 100%); padding:28px 32px; text-align:center; }
+    .logo { font-size:1.5rem; font-weight:900; color:#a8c47a; letter-spacing:-0.03em; }
+    .logo span { color:#fff; }
+    .body { padding:32px; }
+    .body p { margin:0 0 16px; font-size:15px; line-height:1.65; color:#374151; }
+    .body p:last-child { margin-bottom:0; }
+    h2 { font-size:1.2rem; font-weight:800; color:#1a1a0e; margin:0 0 12px; }
+    .btn { display:inline-block; background:#3a5020; color:#fff !important; text-decoration:none; padding:14px 28px; border-radius:10px; font-weight:700; font-size:15px; margin:8px 0; }
+    .btn-secondary { background:#f0ede3; color:#3a5020 !important; border:1.5px solid #c8d9a6; }
+    .info-box { background:#f0ede3; border:1px solid #c8d9a6; border-radius:10px; padding:14px 18px; margin:16px 0; }
+    .info-box p { margin:0; font-size:14px; color:#515F37; }
+    .divider { height:1px; background:#e9e5d6; margin:24px 0; }
+    .footer { padding:20px 32px 24px; background:#f8f6f0; border-top:1px solid #e9e5d6; }
+    .footer p { margin:0 0 6px; font-size:12px; color:#9ca3af; line-height:1.6; }
+    .footer a { color:#9ca3af; text-decoration:underline; }
+    .badge { display:inline-block; background:rgba(168,196,122,0.15); color:#3a5020; border:1px solid rgba(168,196,122,0.35); border-radius:999px; padding:3px 12px; font-size:12px; font-weight:700; margin-bottom:20px; }
+    blockquote { border-left:3px solid #a8c47a; margin:12px 0; padding:12px 16px; background:#f5f2eb; border-radius:0 8px 8px 0; }
+    blockquote p { color:#374151; font-size:14px; }
+    .highlight { color:#3a5020; font-weight:700; }
+    @media (max-width:480px) { .body, .footer { padding:24px 20px; } }
+  </style>
+</head>
+<body>
+  ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${preheader}</div>` : ''}
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <div class="logo">Gard<span>ee</span></div>
+      </div>
+      <div class="body">
+        ${content}
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} Gardee · <a href="${FRONT_URL()}">gardee.fr</a> · <a href="mailto:info@gardee.fr">info@gardee.fr</a></p>
+        <p>Si ce message vous semble frauduleux ou que vous n'en êtes pas à l'origine, signalez-le à <a href="mailto:info@gardee.fr">info@gardee.fr</a>.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function btn(label: string, url: string, secondary = false): string {
+  return `<a href="${url}" class="btn${secondary ? ' btn-secondary' : ''}">${label}</a>`;
+}
+
+// ── Transactional emails ─────────────────────────────────────────────────────
 
 export async function sendWelcomeEmail(user: IUser): Promise<void> {
   await sendMail(
     user.email,
-    'Bienvenue sur Gardee !',
-    `<p>Bonjour ${user.prenom},</p>
-    <p>Votre inscription a bien été reçue. Votre profil sera visible après validation par notre équipe.</p>
-    ${emailFooter}`
+    'Bienvenue sur Gardee — votre candidature est reçue',
+    layout(`
+      <span class="badge">Nouvelle candidature</span>
+      <h2>Bonjour ${user.prenom} 👋</h2>
+      <p>Votre inscription en tant que prestataire a bien été reçue. Notre équipe va examiner votre dossier dans les meilleurs délais.</p>
+      <div class="info-box">
+        <p>Vous recevrez un email dès que votre profil sera validé et visible sur la plateforme.</p>
+      </div>
+      <p>En attendant, vous pouvez compléter votre profil depuis votre espace personnel.</p>
+      ${btn('Accéder à mon espace', `${APP_URL()}/app/profil`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Votre candidature Gardee a bien été reçue, ${user.prenom}.`)
   );
 }
 
@@ -25,10 +90,14 @@ export async function sendWelcomeClientEmail(user: IUser): Promise<void> {
   await sendMail(
     user.email,
     'Bienvenue sur Gardee !',
-    `<p>Bonjour ${user.prenom},</p>
-    <p>Votre compte Gardee a bien été créé. Vous pouvez maintenant suivre toutes vos demandes de jardinage depuis votre espace personnel.</p>
-    <p><a href="${link}">Accéder à mes demandes →</a></p>
-    ${emailFooter}`
+    layout(`
+      <span class="badge">Compte créé</span>
+      <h2>Bonjour ${user.prenom} 🌿</h2>
+      <p>Votre compte Gardee a bien été créé. Vous pouvez maintenant rechercher les meilleurs jardiniers près de chez vous et suivre vos demandes depuis votre espace personnel.</p>
+      ${btn('Mes réservations', link)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Bienvenue sur Gardee, ${user.prenom} !`)
   );
 }
 
@@ -40,12 +109,15 @@ export async function sendRequestConfirmationEmail(
   const link = `${APP_URL()}/app/requests/confirm?token=${token}`;
   await sendMail(
     to,
-    'Confirmez votre demande de service',
-    `<p>Bonjour,</p>
-    <p>Vous avez soumis une demande de service à <strong>${prestataire.prenom} ${prestataire.nom}</strong>.</p>
-    <p>Cliquez sur le lien ci-dessous pour confirmer votre demande (valable 48h) :</p>
-    <p><a href="${link}">${link}</a></p>
-    ${emailFooter}`
+    'Confirmez votre demande de service — Gardee',
+    layout(`
+      <h2>Confirmez votre demande</h2>
+      <p>Vous avez soumis une demande de service à <span class="highlight">${prestataire.prenom} ${prestataire.nom}</span>.</p>
+      <p>Cliquez sur le bouton ci-dessous pour confirmer votre demande. Ce lien est valable <strong>48 heures</strong>.</p>
+      ${btn('Confirmer ma demande', link)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">Si vous n'avez pas soumis cette demande, ignorez cet email.</p>
+    `, 'Confirmez votre demande de service Gardee.')
   );
 }
 
@@ -53,18 +125,31 @@ export async function sendRequestToProvider(
   request: IServiceRequest,
   prestataire: IUser
 ): Promise<void> {
+  const clientName = request.requesterPrenom
+    ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim()
+    : request.requesterEmail;
+  const dateStr = request.desiredAt
+    ? new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null;
+
   await sendMail(
     prestataire.email,
-    'Nouvelle demande de service',
-    `<p>Bonjour ${prestataire.prenom},</p>
-    <p>Vous avez reçu une nouvelle demande de service de la part de <strong>${request.requesterPrenom ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim() : request.requesterEmail}</strong>.</p>
-    <p>Email : ${request.requesterEmail}</p>
-    ${request.address ? `<p>Adresse du chantier : <strong>${request.address}</strong></p>` : ''}
-    <p>Services demandés : ${request.prestations.join(', ')}</p>
-    ${request.desiredAt ? `<p>Date souhaitée : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-    ${request.description ? `<p>Description : ${request.description}</p>` : ''}
-    <p>Connectez-vous à votre espace pour répondre : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
-    ${emailFooter}`
+    `Nouvelle demande de ${clientName} — Gardee`,
+    layout(`
+      <span class="badge">Nouvelle demande</span>
+      <h2>Bonjour ${prestataire.prenom},</h2>
+      <p>Vous avez reçu une nouvelle demande de service de la part de <span class="highlight">${clientName}</span>.</p>
+      <div class="info-box">
+        <p><strong>Contact :</strong> ${request.requesterEmail}</p>
+        ${request.address ? `<p><strong>Adresse :</strong> ${request.address}</p>` : ''}
+        ${request.prestations.length ? `<p><strong>Service(s) :</strong> ${request.prestations.join(', ')}</p>` : ''}
+        ${dateStr ? `<p><strong>Date souhaitée :</strong> ${dateStr}</p>` : ''}
+        ${request.description ? `<p><strong>Description :</strong> ${request.description}</p>` : ''}
+      </div>
+      ${btn('Répondre à cette demande', `${APP_URL()}/app/mes-demandes`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Nouvelle demande de ${clientName}.`)
   );
 }
 
@@ -72,13 +157,22 @@ export async function sendProviderAcceptedEmail(
   request: IServiceRequest,
   prestataire: IUser
 ): Promise<void> {
+  const dateStr = request.desiredAt
+    ? new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null;
+
   await sendMail(
     request.requesterEmail,
-    'Votre demande a été acceptée',
-    `<p>Bonjour,</p>
-    <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> a accepté votre demande de service.</p>
-    ${request.desiredAt ? `<p>Date confirmée : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-    ${emailFooter}`
+    'Votre demande a été acceptée — Gardee',
+    layout(`
+      <span class="badge">Demande acceptée ✓</span>
+      <h2>Bonne nouvelle !</h2>
+      <p><span class="highlight">${prestataire.prenom} ${prestataire.nom}</span> a accepté votre demande de service.</p>
+      ${dateStr ? `<div class="info-box"><p><strong>Date confirmée :</strong> ${dateStr}</p></div>` : ''}
+      ${btn('Voir mes réservations', `${APP_URL()}/app/mes-demandes`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `${prestataire.prenom} a accepté votre demande.`)
   );
 }
 
@@ -95,24 +189,26 @@ export async function sendProviderProposedEmail(
 
   await sendMail(
     request.requesterEmail,
-    'Proposition de date de votre prestataire',
-    `<p>Bonjour,</p>
-    <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> vous propose une nouvelle date :</p>
-    <p><strong>${dateStr}</strong></p>
-    ${comment ? `<p>Message : ${comment}</p>` : ''}
-    ${acceptLink ? `
-    <p style="margin-top:1.5rem">
-      <a href="${acceptLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#3a5020;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
-        ✓ Accepter cette date
-      </a>
-      &nbsp;&nbsp;
-      <a href="${refuseLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#fef2f2;color:#b91c1c;text-decoration:none;border-radius:8px;font-weight:bold;border:1px solid #fecaca">
-        ✗ Décliner cette date
-      </a>
-    </p>
-    <p style="font-size:0.8rem;color:#9ca3af">Ce lien est valable 7 jours.</p>
-    ` : ''}
-    ${emailFooter}`
+    `${prestataire.prenom} vous propose une date — Gardee`,
+    layout(`
+      <span class="badge">Nouvelle proposition</span>
+      <h2>Proposition de date</h2>
+      <p><span class="highlight">${prestataire.prenom} ${prestataire.nom}</span> vous propose un nouveau créneau :</p>
+      <div class="info-box">
+        <p style="font-size:1rem;font-weight:700;color:#1a1a0e">${dateStr}</p>
+        ${comment ? `<p style="margin-top:8px">"${comment}"</p>` : ''}
+      </div>
+      ${acceptLink ? `
+      <p>
+        ${btn('✓ Accepter cette date', acceptLink)}
+        &nbsp;&nbsp;
+        ${btn('✗ Décliner', refuseLink!, true)}
+      </p>
+      <p style="font-size:13px;color:#9ca3af">Ces liens sont valables 7 jours.</p>
+      ` : ''}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `${prestataire.prenom} vous propose le ${dateStr}.`)
   );
 }
 
@@ -124,11 +220,15 @@ export async function sendClientRefusedProposalEmail(
   const dateStr = `${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} à ${new Date(proposedDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
   await sendMail(
     prestataire.email,
-    'Proposition de date refusée',
-    `<p>Bonjour ${prestataire.prenom},</p>
-    <p>Le client ${request.requesterPrenom ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim() : request.requesterEmail} a décliné votre proposition du <strong>${dateStr}</strong>.</p>
-    <p>Vous pouvez proposer une autre date depuis votre espace : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
-    ${emailFooter}`
+    'Proposition de date refusée — Gardee',
+    layout(`
+      <h2>Bonjour ${prestataire.prenom},</h2>
+      <p>Le client <span class="highlight">${request.requesterPrenom ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim() : request.requesterEmail}</span> a décliné votre proposition du <strong>${dateStr}</strong>.</p>
+      <p>Vous pouvez lui proposer une autre date depuis votre espace.</p>
+      ${btn('Gérer mes demandes', `${APP_URL()}/app/mes-demandes`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `)
   );
 }
 
@@ -139,12 +239,16 @@ export async function sendProviderRefusedEmail(
 ): Promise<void> {
   await sendMail(
     request.requesterEmail,
-    'Votre demande a été refusée',
-    `<p>Bonjour,</p>
-    <p><strong>${prestataire.prenom} ${prestataire.nom}</strong> n'est pas disponible pour votre demande.</p>
-    ${message ? `<p>Message : ${message}</p>` : ''}
-    <p>Vous pouvez trouver d'autres prestataires sur <a href="${FRONT_URL()}">${FRONT_URL()}</a></p>
-    ${emailFooter}`
+    'Votre demande n\'a pas pu être honorée — Gardee',
+    layout(`
+      <h2>Dommage…</h2>
+      <p><span class="highlight">${prestataire.prenom} ${prestataire.nom}</span> n'est pas disponible pour votre demande.</p>
+      ${message ? `<blockquote><p>${message}</p></blockquote>` : ''}
+      <p>Pas d'inquiétude, d'autres jardiniers sont disponibles près de chez vous.</p>
+      ${btn('Trouver un autre jardinier', `${FRONT_URL()}/carte`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `)
   );
 }
 
@@ -155,12 +259,16 @@ export async function sendRatingRequestEmail(
   const link = `${APP_URL()}/app/requests/rate?token=${request.ratingToken}`;
   await sendMail(
     request.requesterEmail,
-    'Comment s\'est passée votre prestation ?',
-    `<p>Bonjour,</p>
-    <p>Votre prestation avec <strong>${prestataire.prenom} ${prestataire.nom}</strong> vient de se terminer.</p>
-    <p>Donnez votre avis en cliquant sur ce lien :</p>
-    <p><a href="${link}">${link}</a></p>
-    ${emailFooter}`
+    `Comment s'est passée votre prestation avec ${prestataire.prenom} ?`,
+    layout(`
+      <span class="badge">Votre avis compte</span>
+      <h2>Votre prestation est terminée !</h2>
+      <p>Votre prestation avec <span class="highlight">${prestataire.prenom} ${prestataire.nom}</span> vient de se terminer. Votre avis aide d'autres clients à choisir leur jardinier.</p>
+      <p>Cela prend moins de 2 minutes.</p>
+      ${btn('Laisser mon avis', link)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Évaluez votre prestation avec ${prestataire.prenom}.`)
   );
 }
 
@@ -168,13 +276,22 @@ export async function sendUpcomingReminderEmail(
   request: IServiceRequest,
   prestataire: IUser
 ): Promise<void> {
+  const dateStr = request.desiredAt
+    ? new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null;
+
   await sendMail(
     request.requesterEmail,
-    'Rappel : prestation demain',
-    `<p>Bonjour,</p>
-    <p>Rappel : votre prestation avec <strong>${prestataire.prenom} ${prestataire.nom}</strong> est prévue demain.</p>
-    ${request.desiredAt ? `<p>Date : ${new Date(request.desiredAt).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>` : ''}
-    ${emailFooter}`
+    `Rappel : prestation demain avec ${prestataire.prenom} — Gardee`,
+    layout(`
+      <span class="badge">Rappel J-1</span>
+      <h2>Votre prestation est demain !</h2>
+      <p>Rappel : votre prestation avec <span class="highlight">${prestataire.prenom} ${prestataire.nom}</span> est prévue demain.</p>
+      ${dateStr ? `<div class="info-box"><p><strong>Date :</strong> ${dateStr}</p></div>` : ''}
+      ${btn('Voir mes réservations', `${APP_URL()}/app/mes-demandes`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Votre prestation avec ${prestataire.prenom} est demain.`)
   );
 }
 
@@ -188,19 +305,16 @@ export async function sendMessageToClientEmail(
   await sendMail(
     request.requesterEmail,
     `Message de ${prestataireName} — Gardee`,
-    `<p>Bonjour${request.requesterPrenom ? ` ${request.requesterPrenom}` : ''},</p>
-    <p><strong>${prestataireName}</strong> vous a envoyé un message concernant votre demande :</p>
-    <blockquote style="border-left:3px solid #a8c47a;margin:1rem 0;padding:0.75rem 1rem;background:#f5f2eb;border-radius:0 8px 8px 0;color:#374151">
-      ${content.replace(/\n/g, '<br>')}
-    </blockquote>
-    <p style="margin-top:1.5rem">
-      <a href="${replyLink}" style="display:inline-block;padding:0.75rem 1.5rem;background:#3a5020;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
-        Répondre à ce message
-      </a>
-    </p>
-    <p style="font-size:0.85rem;color:#6b7280">Vous pouvez aussi répondre depuis votre espace Gardee si vous avez un compte : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
-    <p style="font-size:0.78rem;color:#9ca3af">Ce lien est valable 7 jours.</p>
-    ${emailFooter}`
+    layout(`
+      <span class="badge">Nouveau message</span>
+      <h2>Bonjour${request.requesterPrenom ? ` ${request.requesterPrenom}` : ''},</h2>
+      <p><span class="highlight">${prestataireName}</span> vous a envoyé un message :</p>
+      <blockquote><p>${content.replace(/\n/g, '<br>')}</p></blockquote>
+      ${btn('Répondre', replyLink)}
+      <p style="font-size:13px;color:#9ca3af">Ce lien est valable 7 jours. Vous pouvez aussi répondre depuis votre <a href="${APP_URL()}/app/mes-demandes" style="color:#9ca3af">espace Gardee</a>.</p>
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Nouveau message de ${prestataireName}.`)
   );
 }
 
@@ -213,13 +327,80 @@ export async function sendMessageToProviderEmail(
   await sendMail(
     prestataire.email,
     `Réponse de ${clientName} — Gardee`,
-    `<p>Bonjour ${prestataire.prenom},</p>
-    <p><strong>${clientName}</strong> a répondu à votre message :</p>
-    <blockquote style="border-left:3px solid #a8c47a;margin:1rem 0;padding:0.75rem 1rem;background:#f5f2eb;border-radius:0 8px 8px 0;color:#374151">
-      ${content.replace(/\n/g, '<br>')}
-    </blockquote>
-    <p>Retrouvez la conversation dans votre espace : <a href="${APP_URL()}/app/mes-demandes">${APP_URL()}/app/mes-demandes</a></p>
-    ${emailFooter}`
+    layout(`
+      <span class="badge">Nouveau message</span>
+      <h2>Bonjour ${prestataire.prenom},</h2>
+      <p><span class="highlight">${clientName}</span> a répondu à votre message :</p>
+      <blockquote><p>${content.replace(/\n/g, '<br>')}</p></blockquote>
+      ${btn('Voir la conversation', `${APP_URL()}/app/mes-demandes`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Nouveau message de ${clientName}.`)
+  );
+}
+
+export async function sendPrestataireAcceptedEmail(user: IUser): Promise<void> {
+  const link = `${APP_URL()}/app/profil`;
+  await sendMail(
+    user.email,
+    'Félicitations, votre profil Gardee est validé ! 🎉',
+    layout(`
+      <span class="badge">Profil validé ✓</span>
+      <h2>Félicitations, ${user.prenom} !</h2>
+      <p>Excellente nouvelle ! Votre profil prestataire a été <span class="highlight">validé</span> par notre équipe. Vous êtes maintenant visible sur la plateforme Gardee et pouvez commencer à recevoir des demandes.</p>
+      ${btn('Accéder à mon espace', link)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `, `Votre profil Gardee est validé, ${user.prenom} !`)
+  );
+}
+
+export async function sendPrestataireRejectedTemporaryEmail(user: IUser, _reason: string): Promise<void> {
+  const link = `${APP_URL()}/app/profil`;
+  await sendMail(
+    user.email,
+    'Votre profil Gardee nécessite des modifications',
+    layout(`
+      <h2>Bonjour ${user.prenom},</h2>
+      <p>Nous avons examiné votre profil prestataire. Des modifications sont nécessaires avant qu'il puisse être diffusé sur la plateforme.</p>
+      <p>Connectez-vous à votre espace pour consulter les détails et effectuer les corrections demandées.</p>
+      ${btn('Modifier mon profil', link)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `)
+  );
+}
+
+export async function sendPrestataireRejectedPermanentlyEmail(user: IUser, reason: string): Promise<void> {
+  await sendMail(
+    user.email,
+    'Votre candidature Gardee',
+    layout(`
+      <h2>Bonjour ${user.prenom},</h2>
+      <p>Nous avons soigneusement étudié votre dossier et nous ne sommes malheureusement pas en mesure de donner suite à votre candidature sur la plateforme Gardee.</p>
+      ${reason ? `<div class="info-box"><p><strong>Motif :</strong> ${reason}</p></div>` : ''}
+      <p>Nous vous remercions de l'intérêt que vous portez à Gardee et vous souhaitons bonne continuation.</p>
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
+    `)
+  );
+}
+
+export async function sendEmailVerificationCode(user: IUser, code: string): Promise<void> {
+  await sendMail(
+    user.email,
+    `${code} — Votre code de vérification Gardee`,
+    layout(`
+      <span class="badge">Vérification du compte</span>
+      <h2>Bonjour ${user.prenom},</h2>
+      <p>Pour activer votre compte Gardee, entrez ce code de vérification dans l'application :</p>
+      <div style="text-align:center;margin:1.5rem 0">
+        <div style="display:inline-block;background:#1a2410;color:#a8c47a;font-size:2.2rem;font-weight:900;letter-spacing:0.3em;padding:1rem 2rem;border-radius:12px">${code}</div>
+      </div>
+      <p style="text-align:center;font-size:13px;color:#9ca3af">Ce code est valable <strong>10 minutes</strong>.</p>
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">Si vous n'avez pas créé de compte sur Gardee, ignorez cet email.</p>
+    `, `Votre code Gardee : ${code}`)
   );
 }
 
@@ -227,11 +408,13 @@ export async function sendForgotPasswordEmail(to: string, token: string): Promis
   const link = `${APP_URL()}/app/forgot-password?token=${token}`;
   await sendMail(
     to,
-    'Réinitialisation de votre mot de passe',
-    `<p>Bonjour,</p>
-    <p>Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe (valable 1h) :</p>
-    <p><a href="${link}">${link}</a></p>
-    <p>Si vous n'avez pas fait cette demande, ignorez cet email.</p>
-    ${emailFooter}`
+    'Réinitialisez votre mot de passe — Gardee',
+    layout(`
+      <h2>Réinitialisation du mot de passe</h2>
+      <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous — ce lien est valable <strong>1 heure</strong>.</p>
+      ${btn('Réinitialiser mon mot de passe', link)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">Si vous n'avez pas fait cette demande, ignorez cet email. Votre mot de passe ne sera pas modifié.</p>
+    `, 'Réinitialisez votre mot de passe Gardee.')
   );
 }

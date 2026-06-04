@@ -23,5 +23,7 @@ router.get('/roles', isConnected, auth.getRoles);
 router.put('/change-password', isConnected, auth.changePassword);
 router.post('/forgot-password', authLimiter, auth.forgotPassword);
 router.post('/reset-password', authLimiter, auth.resetPassword);
+router.post('/verify-email', authLimiter, auth.verifyEmail);
+router.post('/resend-verification', authLimiter, auth.resendVerification);
 
 export default router;

@@ -6,7 +6,7 @@ import { Prestataire } from '../models/Prestataire';
 import { RefreshToken } from '../models/RefreshToken';
 import { PasswordReset } from '../models/PasswordReset';
 import { signAccessToken, createRefreshToken } from '../utils/tokens';
-import { sendForgotPasswordEmail, sendWelcomeClientEmail } from '../services/emailService';
+import { sendForgotPasswordEmail, sendWelcomeClientEmail, sendEmailVerificationCode } from '../services/emailService';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
 
@@ -20,8 +20,8 @@ const COOKIE_OPTS = {
 export async function checkEmail(req: Request, res: Response): Promise<void> {
   const email = (req.query as { email?: string }).email?.toLowerCase();
   if (!email) { res.status(400).json({ error: 'Email requis' }); return; }
-  const exists = !!(await User.findOne({ email }).select('_id'));
-  res.json({ exists });
+  const user = await User.findOne({ email }).select('_id bannedPermanently');
+  res.json({ exists: !!user, bannedPermanently: user?.bannedPermanently ?? false });
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
@@ -31,19 +31,73 @@ export async function register(req: Request, res: Response): Promise<void> {
     return;
   }
   const existing = await User.findOne({ email: email.toLowerCase() });
+  if (existing?.bannedPermanently) {
+    res.status(403).json({ error: 'Cette adresse email ne peut plus être utilisée sur Gardee.' });
+    return;
+  }
   if (existing) {
     res.status(409).json({ error: 'Un compte existe déjà avec cet email' });
     return;
   }
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ email: email.toLowerCase(), passwordHash, nom, prenom, role: 'user' });
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  const user = await User.create({
+    email: email.toLowerCase(), passwordHash, nom, prenom, role: 'user',
+    emailVerified: false,
+    emailVerificationCode: code,
+    emailVerificationExpiresAt: expiresAt,
+  });
+
+  sendEmailVerificationCode(user, code).catch(() => {});
+
+  res.status(201).json({ requiresVerification: true, userId: user._id.toString() });
+}
+
+export async function verifyEmail(req: Request, res: Response): Promise<void> {
+  const { userId, code } = req.body as { userId: string; code: string };
+  if (!userId || !code) { res.status(400).json({ error: 'Paramètres manquants' }); return; }
+
+  const user = await User.findById(userId);
+  if (!user) { res.status(404).json({ error: 'Compte introuvable' }); return; }
+  if (user.emailVerified) { res.status(400).json({ error: 'Compte déjà vérifié' }); return; }
+  if (!user.emailVerificationCode || user.emailVerificationCode !== code) {
+    res.status(400).json({ error: 'Code invalide' });
+    return;
+  }
+  if (user.emailVerificationExpiresAt && user.emailVerificationExpiresAt < new Date()) {
+    res.status(400).json({ error: 'Code expiré. Demandez un nouveau code.' });
+    return;
+  }
+
+  user.emailVerified = true;
+  user.emailVerificationCode = undefined;
+  user.emailVerificationExpiresAt = undefined;
+  await user.save();
 
   sendWelcomeClientEmail(user).catch(() => {});
 
   const accessToken = signAccessToken(user._id);
   const refreshToken = await createRefreshToken(user._id);
   res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
-  res.status(201).json({ user: serializeUser(user, null), accessToken });
+  res.json({ user: serializeUser(user, null), accessToken });
+}
+
+export async function resendVerification(req: Request, res: Response): Promise<void> {
+  const { userId } = req.body as { userId: string };
+  if (!userId) { res.status(400).json({ error: 'userId manquant' }); return; }
+
+  const user = await User.findById(userId);
+  if (!user || user.emailVerified) { res.status(400).json({ error: 'Compte introuvable ou déjà vérifié' }); return; }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  user.emailVerificationCode = code;
+  user.emailVerificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await user.save();
+
+  sendEmailVerificationCode(user, code).catch(() => {});
+  res.json({ ok: true });
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
