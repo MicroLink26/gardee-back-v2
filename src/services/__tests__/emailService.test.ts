@@ -283,7 +283,7 @@ describe('emailService', () => {
     );
 
     const body = mockedSendMail.mock.calls[0][2];
-    expect(body).toContain('<p>Bonjour,</p>');
+    expect(body).toContain('<h2>Bonjour,</h2>');
   });
 
   it('sendMessageToClientEmail — converts newlines to br tags', async () => {

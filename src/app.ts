@@ -68,15 +68,8 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, version, buildDate: B
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = parseInt(process.env.PORT ?? '3000', 10);
-
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => console.log(`Gardee API v2 running on port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error('DB connection failed:', err);
-    process.exit(1);
-  });
-
 export default app;
+export async function startServer(port: number = parseInt(process.env.PORT ?? '3000', 10)) {
+  await connectDB();
+  return app.listen(port, () => console.log(`Gardee API v2 running on port ${port}`));
+}

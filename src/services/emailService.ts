@@ -419,7 +419,7 @@ export async function sendForgotPasswordEmail(to: string, token: string): Promis
   const link = `${APP_URL()}/app/forgot-password?token=${token}`;
   await sendMail(
     to,
-    'Réinitialisez votre mot de passe — Gardee',
+    'Réinitialisation de votre mot de passe',
     layout(`
       <h2>Réinitialisation du mot de passe</h2>
       <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous — ce lien est valable <strong>1 heure</strong>.</p>

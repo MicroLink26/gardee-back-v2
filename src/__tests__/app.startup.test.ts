@@ -25,10 +25,10 @@ describe('app startup — DB failure', () => {
     jest.doMock('../models/User', () => ({ User: { findById: jest.fn() } }));
     jest.doMock('../models/Prestataire', () => ({ Prestataire: { findOne: jest.fn() } }));
 
-    await import('../app');
-    await new Promise(resolve => setTimeout(resolve, 30));
+    await import('../index');
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-    expect(mockConsoleError).toHaveBeenCalledWith('DB connection failed:', expect.any(Error));
+    expect(mockConsoleError).toHaveBeenCalledWith('Server failed to start:', expect.any(Error));
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
@@ -43,7 +43,7 @@ describe('app startup — DB failure', () => {
     jest.doMock('../models/User', () => ({ User: { findById: jest.fn() } }));
     jest.doMock('../models/Prestataire', () => ({ Prestataire: { findOne: jest.fn() } }));
 
-    await import('../app');
+    await import('../index');
 
     expect(morganMock).toHaveBeenCalledWith('combined');
     process.env.NODE_ENV = savedEnv;
@@ -59,8 +59,8 @@ describe('app startup — DB failure', () => {
     jest.doMock('../models/User', () => ({ User: { findById: jest.fn() } }));
     jest.doMock('../models/Prestataire', () => ({ Prestataire: { findOne: jest.fn() } }));
 
-    const app = (await import('../app')).default;
-    expect(app).toBeDefined();
+    const indexModule = await import('../index');
+    expect(indexModule).toBeDefined();
 
     if (savedPort === undefined) delete process.env.PORT;
     else process.env.PORT = savedPort;

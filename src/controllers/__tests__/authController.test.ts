@@ -54,6 +54,7 @@ jest.mock('bcryptjs', () => ({
 jest.mock('../../services/emailService', () => ({
   sendWelcomeClientEmail: jest.fn().mockResolvedValue(undefined),
   sendForgotPasswordEmail: jest.fn().mockResolvedValue(undefined),
+  sendEmailVerificationCode: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('nanoid', () => ({ nanoid: jest.fn().mockReturnValue('reset-token-32chars') }));
