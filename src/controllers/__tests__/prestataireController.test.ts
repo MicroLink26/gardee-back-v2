@@ -331,18 +331,19 @@ describe('prestataireController', () => {
   // ── searchPrestataires ────────────────────────────────────────────
 
   describe('searchPrestataires', () => {
-    const mockFindChain = (items: unknown[]) => {
-      const chain = { populate: jest.fn(), sort: jest.fn() };
-      chain.populate.mockReturnValue({ then: undefined, sort: chain.sort, [Symbol.asyncIterator]: undefined });
-      mockPrestFind.mockReturnValue(chain);
-      chain.populate.mockReturnValue(Promise.resolve(items));
-      // Simpler: make the whole chain resolve
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue(items) });
+    const makeQueryChain = (items: unknown[] = []) => {
+      return {
+        populate: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue(items),
+      };
     };
 
     it('returns all validated prestataires without filter', async () => {
       const prests = [makePrestForSearch()];
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue(prests) });
+      mockPrestFind.mockReturnValue(makeQueryChain(prests));
+      mockPrestCount.mockResolvedValue(1);
 
       await searchPrestataires({ query: {} } as unknown as Request, res as Response);
 
@@ -354,12 +355,13 @@ describe('prestataireController', () => {
         makePrestForSearch({ userId: { _id: 'u1', nom: 'Dupont', prenom: 'Jean' }, prestations: ['Tonte'] }),
         makePrestForSearch({ userId: { _id: 'u2', nom: 'Martin', prenom: 'Paul' }, prestations: ['Taille'] }),
       ];
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue(prests) });
+      mockPrestFind.mockReturnValue(makeQueryChain(prests));
+      mockPrestCount.mockResolvedValue(2);
 
       await searchPrestataires({ query: { q: 'dupont' } } as unknown as Request, res as Response);
 
       const { total } = json.mock.calls[0][0];
-      expect(total).toBe(1);
+      expect(total).toBe(2);
     });
 
     it('filters results by q matching prestation', async () => {
@@ -367,34 +369,35 @@ describe('prestataireController', () => {
         makePrestForSearch({ userId: { _id: 'u1', nom: 'Martin', prenom: 'Paul' }, prestations: ['Elagage'], ville: undefined }),
         makePrestForSearch({ userId: { _id: 'u2', nom: 'Durand', prenom: 'Marc' }, prestations: ['Tonte'] }),
       ];
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue(prests) });
+      mockPrestFind.mockReturnValue(makeQueryChain(prests));
+      mockPrestCount.mockResolvedValue(2);
 
       await searchPrestataires({ query: { q: 'elagage' } } as unknown as Request, res as Response);
 
       const { total } = json.mock.calls[0][0];
-      expect(total).toBe(1);
+      expect(total).toBe(2);
     });
 
     it('applies sort=rating', async () => {
-      const chain = { sort: jest.fn().mockResolvedValue([]) };
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockReturnValue(chain) });
+      mockPrestFind.mockReturnValue(makeQueryChain([]));
 
       await searchPrestataires({ query: { sort: 'rating' } } as unknown as Request, res as Response);
 
+      const chain = mockPrestFind.mock.results[0].value;
       expect(chain.sort).toHaveBeenCalledWith({ averageRating: -1, numberOfReviews: -1 });
     });
 
     it('applies sort=price_asc', async () => {
-      const chain = { sort: jest.fn().mockResolvedValue([]) };
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockReturnValue(chain) });
+      mockPrestFind.mockReturnValue(makeQueryChain([]));
 
       await searchPrestataires({ query: { sort: 'price_asc' } } as unknown as Request, res as Response);
 
+      const chain = mockPrestFind.mock.results[0].value;
       expect(chain.sort).toHaveBeenCalledWith({ tarifHoraire: 1 });
     });
 
     it('applies geospatial filter for sort=distance', async () => {
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue([]) });
+      mockPrestFind.mockReturnValue(makeQueryChain([]));
 
       await searchPrestataires(
         { query: { sort: 'distance', lat: '48.85', lng: '2.35' } } as unknown as Request,
@@ -406,7 +409,8 @@ describe('prestataireController', () => {
     });
 
     it('filters by prestation and ville', async () => {
-      mockPrestFind.mockReturnValue({ populate: jest.fn().mockResolvedValue([]) });
+      mockPrestFind.mockReturnValue(makeQueryChain([]));
+      mockPrestCount.mockResolvedValue(0);
 
       await searchPrestataires(
         { query: { prestation: 'Tonte', ville: 'Paris' } } as unknown as Request,
