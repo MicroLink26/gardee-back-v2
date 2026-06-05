@@ -14,6 +14,12 @@ interface IReaction {
   createdAt: Date;
 }
 
+interface IEditHistory {
+  previousContent: string;
+  editedAt: Date;
+  editedBy: string;
+}
+
 export interface IMessage {
   _id: Types.ObjectId;
   fromRole: 'provider' | 'client';
@@ -26,6 +32,7 @@ export interface IMessage {
   isPinned?: boolean;
   pinnedAt?: Date;
   editedAt?: Date;
+  editHistory?: IEditHistory[];
   isDeleted?: boolean;
   deletedAt?: Date;
 }
@@ -107,6 +114,12 @@ const LabelSchema = new Schema<ILabel>({
   createdAt: { type: Date, default: Date.now },
 });
 
+const EditHistorySchema = new Schema<IEditHistory>({
+  previousContent: { type: String, required: true },
+  editedAt: { type: Date, required: true },
+  editedBy: { type: String, required: true },
+});
+
 const MessageSchema = new Schema<IMessage>({
   fromRole: { type: String, enum: ['provider', 'client'], required: true },
   fromEmail: { type: String, required: true },
@@ -118,6 +131,7 @@ const MessageSchema = new Schema<IMessage>({
   isPinned: { type: Boolean, default: false },
   pinnedAt: { type: Date },
   editedAt: { type: Date },
+  editHistory: { type: [EditHistorySchema], default: [] },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date },
 });

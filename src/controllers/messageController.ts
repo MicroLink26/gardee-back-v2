@@ -558,6 +558,14 @@ export async function editMessage(req: AuthRequest, res: Response): Promise<void
     return;
   }
 
+  // Save current content to edit history
+  if (!message.editHistory) message.editHistory = [];
+  message.editHistory.push({
+    previousContent: message.content,
+    editedAt: new Date(),
+    editedBy: req.user!.email,
+  });
+
   message.content = content.trim();
   message.editedAt = new Date();
 
