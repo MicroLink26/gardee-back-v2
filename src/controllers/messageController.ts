@@ -182,6 +182,7 @@ export async function listClientThreads(req: AuthRequest, res: Response): Promis
     lastMessage: r.messages[r.messages.length - 1],
     messages: r.messages,
     createdAt: r.createdAt,
+    messageToken: r.messageToken,
   }));
 
   res.json({ threads });
@@ -226,5 +227,73 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
     }).catch(() => {});
   }
 
+  res.json({ ok: true, messages: request.messages });
+}
+
+// Marquer les messages comme lus (prestataire connecté)
+export async function markMessagesAsRead(req: AuthRequest, res: Response): Promise<void> {
+  const { messageIds } = req.body as { messageIds: string[] };
+  if (!messageIds || !Array.isArray(messageIds)) {
+    res.status(400).json({ error: 'messageIds doit être un tableau' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    prestataireId: req.user!._id,
+  });
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const readerEmail = req.user!.email;
+  for (const messageId of messageIds) {
+    const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+    if (messageIdx >= 0) {
+      const message = request.messages[messageIdx];
+      if (!message.readBy?.includes(readerEmail)) {
+        if (!message.readBy) message.readBy = [];
+        message.readBy.push(readerEmail);
+      }
+    }
+  }
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}
+
+// Marquer les messages comme lus (client via token)
+export async function markMessagesAsReadByToken(req: Request, res: Response): Promise<void> {
+  const { token, messageIds } = req.body as { token: string; messageIds: string[] };
+  if (!messageIds || !Array.isArray(messageIds)) {
+    res.status(400).json({ error: 'messageIds doit être un tableau' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    messageToken: token,
+    messageTokenExpiresAt: { $gt: new Date() },
+  });
+
+  if (!request) {
+    res.status(400).json({ error: 'Lien invalide ou expiré' });
+    return;
+  }
+
+  const readerEmail = request.requesterEmail;
+  for (const messageId of messageIds) {
+    const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+    if (messageIdx >= 0) {
+      const message = request.messages[messageIdx];
+      if (!message.readBy?.includes(readerEmail)) {
+        if (!message.readBy) message.readBy = [];
+        message.readBy.push(readerEmail);
+      }
+    }
+  }
+
+  await request.save();
   res.json({ ok: true, messages: request.messages });
 }

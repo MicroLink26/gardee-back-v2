@@ -15,6 +15,7 @@ export interface IMessage {
   fromName: string;
   content: string;
   createdAt: Date;
+  readBy?: string[];
 }
 
 interface IRatingDetails {
@@ -77,6 +78,7 @@ const MessageSchema = new Schema<IMessage>({
   fromName: { type: String, required: true },
   content: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
+  readBy: { type: [String], default: [] },
 });
 
 const ProposalSchema = new Schema<IProposal>({
