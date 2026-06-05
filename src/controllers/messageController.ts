@@ -599,3 +599,78 @@ export async function deleteMessage(req: AuthRequest, res: Response): Promise<vo
   await request.save();
   res.json({ ok: true, messages: request.messages });
 }
+
+// Transférer un message à une autre demande
+export async function forwardMessage(req: AuthRequest, res: Response): Promise<void> {
+  const { messageId, targetRequestId } = req.body as { messageId: string; targetRequestId: string };
+  if (!messageId || !targetRequestId) {
+    res.status(400).json({ error: 'messageId et targetRequestId requis' });
+    return;
+  }
+
+  const sourceRequest = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [{ prestataireId: req.user!._id }, { requesterEmail: req.user!.email }],
+  });
+
+  if (!sourceRequest) {
+    res.status(404).json({ error: 'Demande source introuvable' });
+    return;
+  }
+
+  const sourceMessage = sourceRequest.messages.find(m => m._id.toString() === messageId);
+  if (!sourceMessage) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const targetRequest = await ServiceRequest.findOne({
+    _id: targetRequestId,
+    $or: [{ prestataireId: req.user!._id }, { requesterEmail: req.user!.email }],
+  });
+
+  if (!targetRequest) {
+    res.status(404).json({ error: 'Demande cible introuvable' });
+    return;
+  }
+
+  // Créer une copie du message avec note de forwarding
+  const forwardedContent = `[Transféré depuis une autre conversation]\n\n${sourceMessage.content}\n\n— ${sourceMessage.fromName}`;
+
+  // Déterminer le rôle based on qui est propriétaire de la demande cible
+  const isTargetOwnerProvider = targetRequest.prestataireId.toString() === req.user!._id.toString();
+
+  targetRequest.messages.push({
+    fromRole: isTargetOwnerProvider ? 'provider' : 'client',
+    fromEmail: req.user!.email,
+    fromName: req.user!.prenom && req.user!.nom ? `${req.user!.prenom} ${req.user!.nom}` : req.user!.email,
+    content: forwardedContent,
+    createdAt: new Date(),
+  } as Parameters<typeof targetRequest.messages.push>[0]);
+
+  await targetRequest.save();
+  res.json({ ok: true, messages: targetRequest.messages });
+}
+
+// Lister les demandes disponibles pour forwarding (prestataire)
+export async function getForwardTargets(req: AuthRequest, res: Response): Promise<void> {
+  const currentRequestId = req.params.id;
+  
+  const requests = await ServiceRequest.find({
+    _id: { $ne: currentRequestId },
+    $or: [{ prestataireId: req.user!._id }, { requesterEmail: req.user!.email }],
+    'messages.0': { $exists: true },
+  })
+    .select('_id status createdAt requesterEmail requesterPrenom requesterNom')
+    .sort({ updatedAt: -1 })
+    .limit(20);
+
+  const targets = requests.map(r => ({
+    _id: r._id,
+    status: r.status,
+    displayName: r.requesterPrenom ? `${r.requesterPrenom} ${r.requesterNom ?? ''}`.trim() : r.requesterEmail,
+    createdAt: r.createdAt,
+  }));
+
+  res.json({ targets });
+}

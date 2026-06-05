@@ -44,6 +44,8 @@ router.post('/:id/messages/pin', isConnected, isPrestataire, msg.pinMessage);  /
 router.post('/:id/messages/unpin', isConnected, isPrestataire, msg.unpinMessage);  // prestataire unpin
 router.post('/:id/messages/edit', isConnected, msg.editMessage);  // edit own message
 router.post('/:id/messages/delete', isConnected, msg.deleteMessage);  // soft delete own message
+router.post('/:id/messages/forward', isConnected, msg.forwardMessage);  // forward to another request
+router.get('/:id/messages/forward-targets', isConnected, msg.getForwardTargets);  // list available targets
 router.post('/:id/client/message', isConnected, msg.clientSendMessage);       // client connecte — repondre
 
 export default router;
