@@ -391,3 +391,65 @@ export async function addReactionByToken(req: Request, res: Response): Promise<v
   await request.save();
   res.json({ ok: true, messages: request.messages });
 }
+
+// Chercher dans les messages d'une demande (prestataire connecté)
+export async function searchMessages(req: AuthRequest, res: Response): Promise<void> {
+  const { q } = req.query as { q: string };
+  if (!q || q.trim().length < 2) {
+    res.status(400).json({ error: 'Query doit faire au moins 2 caractères' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    prestataireId: req.user!._id,
+  }).select('messages');
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const query = q.toLowerCase();
+  const results = request.messages
+    .map((m, idx) => ({
+      message: m,
+      index: idx,
+      matches: m.content.toLowerCase().includes(query) || m.fromName.toLowerCase().includes(query),
+    }))
+    .filter(r => r.matches)
+    .map(r => ({ ...r.message, _originalIndex: r.index }));
+
+  res.json({ results, total: results.length, query });
+}
+
+// Chercher dans les messages (client via token)
+export async function searchMessagesByToken(req: Request, res: Response): Promise<void> {
+  const { token, q } = req.query as { token: string; q: string };
+  if (!q || q.trim().length < 2) {
+    res.status(400).json({ error: 'Query doit faire au moins 2 caractères' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    messageToken: token,
+    messageTokenExpiresAt: { $gt: new Date() },
+  }).select('messages');
+
+  if (!request) {
+    res.status(400).json({ error: 'Lien invalide ou expiré' });
+    return;
+  }
+
+  const query = q.toLowerCase();
+  const results = request.messages
+    .map((m, idx) => ({
+      message: m,
+      index: idx,
+      matches: m.content.toLowerCase().includes(query) || m.fromName.toLowerCase().includes(query),
+    }))
+    .filter(r => r.matches)
+    .map(r => ({ ...r.message, _originalIndex: r.index }));
+
+  res.json({ results, total: results.length, query });
+}

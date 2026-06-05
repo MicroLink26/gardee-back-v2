@@ -29,12 +29,14 @@ router.post('/:id/complete', isConnected, isPrestataire, req.markComplete);
 
 // Messaging
 router.get('/messages/thread', msg.getThreadByToken);                           // public — token client
+router.get('/messages/search', msg.searchMessagesByToken);                      // public — token client search
 router.post('/messages/reply', msg.replyByToken);                               // public — token client
 router.post('/messages/read-by-token', msg.markMessagesAsReadByToken);          // public — token client mark read
 router.post('/messages/react', msg.addReactionByToken);                         // public — token client react
 router.get('/messages/client-threads', isConnected, msg.listClientThreads);     // client connecté — ses fils
 router.get('/messages/threads', isConnected, isPrestataire, msg.listThreads);   // prestataire — liste des fils
 router.get('/:id/messages', isConnected, isPrestataire, msg.getMessages);     // prestataire — fil d'une demande
+router.get('/:id/messages/search', isConnected, isPrestataire, msg.searchMessages);  // prestataire search
 router.post('/:id/message', isConnected, isPrestataire, msg.sendMessage);     // prestataire — envoyer
 router.post('/:id/messages/mark-read', isConnected, isPrestataire, msg.markMessagesAsRead);  // prestataire mark read
 router.post('/:id/messages/react', isConnected, isPrestataire, msg.addReaction);  // prestataire react
