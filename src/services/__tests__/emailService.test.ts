@@ -19,6 +19,12 @@ jest.mock('../../config/mailer', () => ({
   sendMail: jest.fn(),
 }));
 
+jest.mock('../../models/Category', () => ({
+  Category: {
+    findById: jest.fn(async (id: string) => ({ _id: id, nom: id })),
+  },
+}));
+
 describe('emailService', () => {
   const mockedSendMail = sendMail as jest.MockedFunction<typeof sendMail>;
   const originalAppUrl = process.env.APP_URL;
@@ -62,7 +68,7 @@ describe('emailService', () => {
 
     expect(mockedSendMail).toHaveBeenCalledWith(
       'jean@example.com',
-      'Bienvenue sur Gardee !',
+      'Bienvenue sur Gardee — votre candidature est reçue',
       expect.stringContaining('Jean')
     );
   });
@@ -86,7 +92,7 @@ describe('emailService', () => {
 
     const [to, subject, body] = mockedSendMail.mock.calls[0];
     expect(to).toBe('client@example.com');
-    expect(subject).toBe('Confirmez votre demande de service');
+    expect(subject).toBe('Confirmez votre demande de service — Gardee');
     expect(body).toContain('https://app.gardee.test/app/requests/confirm?token=conf-token');
     expect(body).toContain('Jean Dupont');
   });
@@ -144,7 +150,7 @@ describe('emailService', () => {
 
     const [to, subject, body] = mockedSendMail.mock.calls[0];
     expect(to).toBe('client@example.com');
-    expect(subject).toBe('Votre demande a été acceptée');
+    expect(subject).toBe('Votre demande a été acceptée — Gardee');
     expect(body).toContain('Jean Dupont');
   });
 
@@ -186,7 +192,7 @@ describe('emailService', () => {
 
     const [to, subject, body] = mockedSendMail.mock.calls[0];
     expect(to).toBe('jean@example.com');
-    expect(subject).toBe('Proposition de date refusée');
+    expect(subject).toBe('Proposition de date refusée — Gardee');
     expect(body).toContain('Marie Curie');
   });
 
@@ -244,7 +250,7 @@ describe('emailService', () => {
 
     const [to, subject] = mockedSendMail.mock.calls[0];
     expect(to).toBe('client@example.com');
-    expect(subject).toBe('Rappel : prestation demain');
+    expect(subject).toBe('Rappel : prestation demain — Gardee');
   });
 
   it('sendUpcomingReminderEmail — includes date when desiredAt is set', async () => {

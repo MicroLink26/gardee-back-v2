@@ -34,6 +34,13 @@ jest.mock('../../utils/fileUpload', () => ({
 
 jest.mock('../../services/emailService', () => ({
   sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+  sendEmailVerificationCode: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../models/Category', () => ({
+  Category: {
+    findById: jest.fn(async (id: string) => ({ _id: id, nom: id })),
+  },
 }));
 
 describe('prestataireController', () => {

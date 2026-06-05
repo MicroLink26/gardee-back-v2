@@ -97,7 +97,7 @@ describe('authController', () => {
 
       await checkEmail({ query: { email: 'new@example.com' } } as unknown as Request, res as Response);
 
-      expect(json).toHaveBeenCalledWith({ exists: false });
+      expect(json).toHaveBeenCalledWith({ exists: false, bannedPermanently: false });
     });
 
     it('returns exists:true when email is taken', async () => {
@@ -105,7 +105,7 @@ describe('authController', () => {
 
       await checkEmail({ query: { email: 'taken@example.com' } } as unknown as Request, res as Response);
 
-      expect(json).toHaveBeenCalledWith({ exists: true });
+      expect(json).toHaveBeenCalledWith({ exists: true, bannedPermanently: false });
     });
 
     it('returns 400 when email is missing', async () => {
@@ -118,7 +118,7 @@ describe('authController', () => {
   // ── register ─────────────────────────────────────────────────────
 
   describe('register', () => {
-    it('creates a user and returns tokens', async () => {
+    it('creates a user and requires email verification', async () => {
       mockUserFindOne.mockResolvedValue(null);
       const createdUser = {
         _id: 'new-id',
@@ -126,7 +126,6 @@ describe('authController', () => {
         nom: 'Dupont',
         prenom: 'Jean',
         role: 'user',
-        toObject: () => ({ _id: 'new-id', email: 'user@example.com', nom: 'Dupont', prenom: 'Jean', role: 'user' }),
       };
       mockUserCreate.mockResolvedValue(createdUser);
 
@@ -136,9 +135,8 @@ describe('authController', () => {
       );
 
       expect(mockUserCreate).toHaveBeenCalled();
-      expect(cookie).toHaveBeenCalledWith('refresh_token', 'refresh-token-mock', expect.any(Object));
       expect(status).toHaveBeenCalledWith(201);
-      expect(json).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'access-token-mock' }));
+      expect(json).toHaveBeenCalledWith(expect.objectContaining({ requiresVerification: true, userId: 'new-id' }));
     });
 
     it('completes successfully even when welcome email fails', async () => {
@@ -189,6 +187,7 @@ describe('authController', () => {
       _id: 'uid',
       email: 'user@example.com',
       passwordHash: 'hashed',
+      emailVerified: true,
       last_login: undefined as Date | undefined,
       save: jest.fn(),
       toObject: () => ({ _id: 'uid', email: 'user@example.com', role: 'user' }),

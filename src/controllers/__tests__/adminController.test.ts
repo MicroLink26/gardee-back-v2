@@ -11,6 +11,7 @@ import { AuthRequest } from '../../types';
 jest.mock('../../models/User', () => ({
   User: {
     find: jest.fn(),
+    findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
     findByIdAndDelete: jest.fn(),
     countDocuments: jest.fn(),
@@ -37,6 +38,7 @@ jest.mock('../../models/ServiceRequest', () => ({
 
 describe('adminController', () => {
   const mockUserFind = User.find as jest.Mock;
+  const mockUserFindById = User.findById as jest.Mock;
   const mockUserFindByIdAndUpdate = User.findByIdAndUpdate as jest.Mock;
   const mockUserFindByIdAndDelete = User.findByIdAndDelete as jest.Mock;
   const mockUserCount = User.countDocuments as jest.Mock;
