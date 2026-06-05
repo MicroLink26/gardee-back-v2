@@ -191,11 +191,16 @@ export async function searchPrestataires(req: Request, res: Response): Promise<v
   if (sort === 'rating') mongoSort = { averageRating: -1, numberOfReviews: -1 };
   else if (sort === 'price_asc') mongoSort = { tarifHoraire: 1 };
 
-  const baseQuery = Prestataire.find(prestFilter).populate<{ userId: { _id: string; nom: string; prenom: string; email: string } }>('userId', 'nom prenom email');
+  let query = Prestataire.find(prestFilter)
+    .populate<{ userId: { _id: string; nom: string; prenom: string; email: string } }>('userId', 'nom prenom email');
 
-  // Text search on user fields is handled post-population (simple approach)
-  let query = baseQuery;
   if (mongoSort) query = query.sort(mongoSort);
+
+  // Count total before pagination
+  const total = await Prestataire.countDocuments(prestFilter);
+
+  // Apply pagination at database level for performance
+  query = query.skip(skip).limit(parseInt(pageSize));
 
   const all = await query;
 
@@ -207,8 +212,7 @@ export async function searchPrestataires(req: Request, res: Response): Promise<v
       })
     : all;
 
-  const total = filtered.length;
-  const items = filtered.slice(skip, skip + parseInt(pageSize)).map(p => {
+  const items = filtered.map(p => {
     const u = p.userId as { _id: string; nom: string; prenom: string };
     return {
       _id: u._id,
