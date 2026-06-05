@@ -334,3 +334,81 @@ export async function unarchiveRequest(req: AuthRequest, res: Response): Promise
   await request.save();
   res.json({ ok: true });
 }
+
+export async function addLabel(req: AuthRequest, res: Response): Promise<void> {
+  const { labelName } = req.body as { labelName?: string };
+  if (!labelName || labelName.trim().length === 0) {
+    res.status(400).json({ error: 'Nom du label requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [
+      { prestataireId: req.user!._id },
+      { clientId: req.user!._id },
+      { requesterEmail: req.user!.email },
+    ],
+  });
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const cleanName = labelName.trim().toLowerCase();
+  if (!request.labels) request.labels = [];
+  if (!request.labels.some(l => l.name === cleanName)) {
+    request.labels.push({ name: cleanName, createdAt: new Date() });
+  }
+  await request.save();
+  res.json({ ok: true, labels: request.labels });
+}
+
+export async function removeLabel(req: AuthRequest, res: Response): Promise<void> {
+  const { labelName } = req.body as { labelName?: string };
+  if (!labelName) {
+    res.status(400).json({ error: 'Nom du label requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [
+      { prestataireId: req.user!._id },
+      { clientId: req.user!._id },
+      { requesterEmail: req.user!.email },
+    ],
+  });
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const cleanName = labelName.trim().toLowerCase();
+  request.labels = (request.labels ?? []).filter(l => l.name !== cleanName);
+  await request.save();
+  res.json({ ok: true, labels: request.labels });
+}
+
+export async function listLabels(req: AuthRequest, res: Response): Promise<void> {
+  const requests = await ServiceRequest.find({
+    $or: [
+      { prestataireId: req.user!._id },
+      { clientId: req.user!._id },
+      { requesterEmail: req.user!.email },
+    ],
+  }).select('labels');
+
+  const labelCounts = new Map<string, number>();
+  requests.forEach(r => {
+    (r.labels ?? []).forEach(l => {
+      labelCounts.set(l.name, (labelCounts.get(l.name) ?? 0) + 1);
+    });
+  });
+
+  const labels = Array.from(labelCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  res.json({ labels });
+}

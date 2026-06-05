@@ -145,7 +145,7 @@ export async function listThreads(req: AuthRequest, res: Response): Promise<void
     prestataireId: req.user!._id,
     'messages.0': { $exists: true },
   })
-    .select('messages requesterEmail requesterPrenom requesterNom status createdAt isArchived')
+    .select('messages requesterEmail requesterPrenom requesterNom status createdAt isArchived labels')
     .sort({ updatedAt: -1 });
 
   const threads = requests.map(r => ({
@@ -157,6 +157,7 @@ export async function listThreads(req: AuthRequest, res: Response): Promise<void
     lastMessage: r.messages[r.messages.length - 1],
     createdAt: r.createdAt,
     isArchived: r.isArchived,
+    labels: r.labels ?? [],
   }));
 
   res.json({ threads });
@@ -168,7 +169,7 @@ export async function listClientThreads(req: AuthRequest, res: Response): Promis
     $or: [{ clientId: req.user!._id }, { requesterEmail: req.user!.email }],
     'messages.0': { $exists: true },
   })
-    .select('messages status createdAt updatedAt prestataireId isArchived')
+    .select('messages status createdAt updatedAt prestataireId isArchived labels')
     .sort({ updatedAt: -1 });
 
   const prestataireIds = [...new Set(requests.map(r => r.prestataireId.toString()))];
@@ -185,6 +186,7 @@ export async function listClientThreads(req: AuthRequest, res: Response): Promis
     createdAt: r.createdAt,
     messageToken: r.messageToken,
     isArchived: r.isArchived,
+    labels: r.labels ?? [],
   }));
 
   res.json({ threads });

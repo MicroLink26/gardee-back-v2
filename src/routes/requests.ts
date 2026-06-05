@@ -20,6 +20,9 @@ router.get('/proposal/refuse', req.clientRefuseProposalByToken);
 router.get('/mine/client', isConnected, req.listMyClientRequests);
 router.patch('/:id/archive', isConnected, req.archiveRequest);
 router.patch('/:id/unarchive', isConnected, req.unarchiveRequest);
+router.post('/:id/labels/add', isConnected, req.addLabel);
+router.post('/:id/labels/remove', isConnected, req.removeLabel);
+router.get('/labels', isConnected, req.listLabels);
 
 // Authenticated prestataire
 router.get('/mine', isConnected, isPrestataire, req.listMyRequests);

@@ -30,6 +30,12 @@ export interface IMessage {
   deletedAt?: Date;
 }
 
+interface ILabel {
+  name: string;
+  color?: string;
+  createdAt: Date;
+}
+
 interface IRatingDetails {
   time: number;
   quality: number;
@@ -72,6 +78,8 @@ export interface IServiceRequest extends Document {
   // Archive
   isArchived?: boolean;
   archivedAt?: Date;
+  // Labels
+  labels?: ILabel[];
   // Rating
   ratingDetails?: IRatingDetails;
   ratingComment?: string;
@@ -90,6 +98,12 @@ export interface IServiceRequest extends Document {
 const ReactionSchema = new Schema<IReaction>({
   emoji: { type: String, required: true },
   reactorEmail: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const LabelSchema = new Schema<ILabel>({
+  name: { type: String, required: true },
+  color: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -159,6 +173,7 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
     lastProviderNotifiedAt: { type: Date },
     isArchived: { type: Boolean, default: false },
     archivedAt: { type: Date },
+    labels: { type: [LabelSchema], default: [] },
     ratingDetails: { type: RatingSchema },
     ratingComment: { type: String },
     recommend: { type: Boolean },
