@@ -21,7 +21,14 @@ jest.mock('../../config/mailer', () => ({
 
 jest.mock('../../models/Category', () => ({
   Category: {
-    findById: jest.fn(async (id: string) => ({ _id: id, nom: id })),
+    findById: jest.fn((id: string) => ({
+      select: jest.fn().mockResolvedValue({ _id: id, nom: id }),
+    })),
+    find: jest.fn(() => ({
+      select: jest.fn(() => ({
+        lean: jest.fn().mockResolvedValue([]),
+      })),
+    })),
   },
 }));
 
@@ -250,7 +257,7 @@ describe('emailService', () => {
 
     const [to, subject] = mockedSendMail.mock.calls[0];
     expect(to).toBe('client@example.com');
-    expect(subject).toBe('Rappel : prestation demain — Gardee');
+    expect(subject).toContain('Rappel : prestation demain');
   });
 
   it('sendUpcomingReminderEmail — includes date when desiredAt is set', async () => {

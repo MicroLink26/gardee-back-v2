@@ -39,7 +39,14 @@ jest.mock('../../services/emailService', () => ({
 
 jest.mock('../../models/Category', () => ({
   Category: {
-    findById: jest.fn(async (id: string) => ({ _id: id, nom: id })),
+    findById: jest.fn((id: string) => ({
+      select: jest.fn().mockResolvedValue({ _id: id, nom: id }),
+    })),
+    find: jest.fn(() => ({
+      select: jest.fn(() => ({
+        lean: jest.fn().mockResolvedValue([]),
+      })),
+    })),
   },
 }));
 
@@ -407,7 +414,7 @@ describe('prestataireController', () => {
       );
 
       const filter = mockPrestFind.mock.calls[0][0];
-      expect(filter.prestations).toBe('Tonte');
+      expect(filter.prestations).toEqual(expect.objectContaining({ $in: expect.arrayContaining(['Tonte']) }));
       expect(filter.ville).toBeInstanceOf(RegExp);
     });
   });
@@ -444,7 +451,7 @@ describe('prestataireController', () => {
       await getRanking({ query: { prestation: 'Taille', ville: 'Lyon' } } as unknown as Request, res as Response);
 
       const filter = mockPrestFind.mock.calls[0][0];
-      expect(filter.prestations).toBe('Taille');
+      expect(filter.prestations).toEqual(expect.objectContaining({ $in: expect.arrayContaining(['Taille']) }));
       expect(filter.ville).toBeInstanceOf(RegExp);
     });
   });
