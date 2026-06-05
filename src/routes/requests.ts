@@ -18,6 +18,8 @@ router.get('/proposal/refuse', req.clientRefuseProposalByToken);
 
 // Authenticated client
 router.get('/mine/client', isConnected, req.listMyClientRequests);
+router.patch('/:id/archive', isConnected, req.archiveRequest);
+router.patch('/:id/unarchive', isConnected, req.unarchiveRequest);
 
 // Authenticated prestataire
 router.get('/mine', isConnected, isPrestataire, req.listMyRequests);

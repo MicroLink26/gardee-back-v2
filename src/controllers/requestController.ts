@@ -109,22 +109,27 @@ export async function resendConfirmation(req: Request, res: Response): Promise<v
 }
 
 export async function listMyRequests(req: AuthRequest, res: Response): Promise<void> {
-  const { page = '1', pageSize = '20' } = req.query as Record<string, string>;
+  const { page = '1', pageSize = '20', includeArchived = 'false' } = req.query as Record<string, string>;
   const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
+  const filter = {
+    prestataireId: req.user!._id,
+    ...(includeArchived === 'false' && { isArchived: { $ne: true } }),
+  };
+
   const [items, total] = await Promise.all([
-    ServiceRequest.find({ prestataireId: req.user!._id })
+    ServiceRequest.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(pageSize)),
-    ServiceRequest.countDocuments({ prestataireId: req.user!._id }),
+    ServiceRequest.countDocuments(filter),
   ]);
 
   res.json({ items, total, page: parseInt(page), pageSize: parseInt(pageSize) });
 }
 
 export async function listMyClientRequests(req: AuthRequest, res: Response): Promise<void> {
-  const { page = '1', pageSize = '20' } = req.query as Record<string, string>;
+  const { page = '1', pageSize = '20', includeArchived = 'false' } = req.query as Record<string, string>;
   const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
   const filter = {
@@ -132,6 +137,7 @@ export async function listMyClientRequests(req: AuthRequest, res: Response): Pro
       { clientId: req.user!._id },
       { requesterEmail: req.user!.email },
     ],
+    ...(includeArchived === 'false' && { isArchived: { $ne: true } }),
   };
 
   const [items, total] = await Promise.all([
@@ -287,6 +293,44 @@ export async function markComplete(req: AuthRequest, res: Response): Promise<voi
     return;
   }
   request.status = 'completed';
+  await request.save();
+  res.json({ ok: true });
+}
+
+export async function archiveRequest(req: AuthRequest, res: Response): Promise<void> {
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [
+      { prestataireId: req.user!._id },
+      { clientId: req.user!._id },
+      { requesterEmail: req.user!.email },
+    ],
+  });
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+  request.isArchived = true;
+  request.archivedAt = new Date();
+  await request.save();
+  res.json({ ok: true });
+}
+
+export async function unarchiveRequest(req: AuthRequest, res: Response): Promise<void> {
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [
+      { prestataireId: req.user!._id },
+      { clientId: req.user!._id },
+      { requesterEmail: req.user!.email },
+    ],
+  });
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+  request.isArchived = false;
+  request.archivedAt = undefined;
   await request.save();
   res.json({ ok: true });
 }

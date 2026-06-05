@@ -69,6 +69,9 @@ export interface IServiceRequest extends Document {
   lastResendAt?: Date;
   // Notifications
   lastProviderNotifiedAt?: Date;
+  // Archive
+  isArchived?: boolean;
+  archivedAt?: Date;
   // Rating
   ratingDetails?: IRatingDetails;
   ratingComment?: string;
@@ -154,6 +157,8 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
     verifyTokenExpiresAt: { type: Date },
     lastResendAt: { type: Date },
     lastProviderNotifiedAt: { type: Date },
+    isArchived: { type: Boolean, default: false },
+    archivedAt: { type: Date },
     ratingDetails: { type: RatingSchema },
     ratingComment: { type: String },
     recommend: { type: Boolean },
