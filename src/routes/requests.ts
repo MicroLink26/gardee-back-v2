@@ -40,6 +40,8 @@ router.get('/:id/messages/search', isConnected, isPrestataire, msg.searchMessage
 router.post('/:id/message', isConnected, isPrestataire, msg.sendMessage);     // prestataire — envoyer
 router.post('/:id/messages/mark-read', isConnected, isPrestataire, msg.markMessagesAsRead);  // prestataire mark read
 router.post('/:id/messages/react', isConnected, isPrestataire, msg.addReaction);  // prestataire react
+router.post('/:id/messages/pin', isConnected, isPrestataire, msg.pinMessage);  // prestataire pin
+router.post('/:id/messages/unpin', isConnected, isPrestataire, msg.unpinMessage);  // prestataire unpin
 router.post('/:id/client/message', isConnected, msg.clientSendMessage);       // client connecte — repondre
 
 export default router;

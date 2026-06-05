@@ -23,6 +23,8 @@ export interface IMessage {
   createdAt: Date;
   readBy?: string[];
   reactions?: IReaction[];
+  isPinned?: boolean;
+  pinnedAt?: Date;
 }
 
 interface IRatingDetails {
@@ -93,6 +95,8 @@ const MessageSchema = new Schema<IMessage>({
   createdAt: { type: Date, default: Date.now },
   readBy: { type: [String], default: [] },
   reactions: { type: [ReactionSchema], default: [] },
+  isPinned: { type: Boolean, default: false },
+  pinnedAt: { type: Date },
 });
 
 const ProposalSchema = new Schema<IProposal>({

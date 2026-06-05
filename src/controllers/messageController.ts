@@ -453,3 +453,67 @@ export async function searchMessagesByToken(req: Request, res: Response): Promis
 
   res.json({ results, total: results.length, query });
 }
+
+// Épingler un message (prestataire connecté)
+export async function pinMessage(req: AuthRequest, res: Response): Promise<void> {
+  const { messageId } = req.body as { messageId: string };
+  if (!messageId) {
+    res.status(400).json({ error: 'messageId requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    prestataireId: req.user!._id,
+  });
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+  if (messageIdx < 0) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const message = request.messages[messageIdx];
+  message.isPinned = true;
+  message.pinnedAt = new Date();
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}
+
+// Dépingler un message (prestataire connecté)
+export async function unpinMessage(req: AuthRequest, res: Response): Promise<void> {
+  const { messageId } = req.body as { messageId: string };
+  if (!messageId) {
+    res.status(400).json({ error: 'messageId requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    prestataireId: req.user!._id,
+  });
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+  if (messageIdx < 0) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const message = request.messages[messageIdx];
+  message.isPinned = false;
+  message.pinnedAt = undefined;
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}
