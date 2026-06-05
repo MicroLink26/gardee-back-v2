@@ -42,6 +42,8 @@ router.post('/:id/messages/mark-read', isConnected, isPrestataire, msg.markMessa
 router.post('/:id/messages/react', isConnected, isPrestataire, msg.addReaction);  // prestataire react
 router.post('/:id/messages/pin', isConnected, isPrestataire, msg.pinMessage);  // prestataire pin
 router.post('/:id/messages/unpin', isConnected, isPrestataire, msg.unpinMessage);  // prestataire unpin
+router.post('/:id/messages/edit', isConnected, msg.editMessage);  // edit own message
+router.post('/:id/messages/delete', isConnected, msg.deleteMessage);  // soft delete own message
 router.post('/:id/client/message', isConnected, msg.clientSendMessage);       // client connecte — repondre
 
 export default router;

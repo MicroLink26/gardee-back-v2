@@ -517,3 +517,85 @@ export async function unpinMessage(req: AuthRequest, res: Response): Promise<voi
   await request.save();
   res.json({ ok: true, messages: request.messages });
 }
+
+// Éditer un message (prestataire ou client selon propriété)
+export async function editMessage(req: AuthRequest, res: Response): Promise<void> {
+  const { messageId, content } = req.body as { messageId: string; content: string };
+  if (!messageId || !content?.trim()) {
+    res.status(400).json({ error: 'messageId et contenu requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [{ prestataireId: req.user!._id }, { requesterEmail: req.user!.email }],
+  });
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+  if (messageIdx < 0) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const message = request.messages[messageIdx];
+  // Vérifier que c'est le propriétaire du message
+  if (message.fromEmail !== req.user!.email) {
+    res.status(403).json({ error: 'Vous ne pouvez éditer que vos propres messages' });
+    return;
+  }
+
+  if (message.isDeleted) {
+    res.status(400).json({ error: 'Impossible d\'éditer un message supprimé' });
+    return;
+  }
+
+  message.content = content.trim();
+  message.editedAt = new Date();
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}
+
+// Supprimer un message (soft delete)
+export async function deleteMessage(req: AuthRequest, res: Response): Promise<void> {
+  const { messageId } = req.body as { messageId: string };
+  if (!messageId) {
+    res.status(400).json({ error: 'messageId requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    $or: [{ prestataireId: req.user!._id }, { requesterEmail: req.user!.email }],
+  });
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+  if (messageIdx < 0) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const message = request.messages[messageIdx];
+  // Vérifier que c'est le propriétaire du message
+  if (message.fromEmail !== req.user!.email) {
+    res.status(403).json({ error: 'Vous ne pouvez supprimer que vos propres messages' });
+    return;
+  }
+
+  message.isDeleted = true;
+  message.deletedAt = new Date();
+  message.content = '[Message supprimé]';
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}

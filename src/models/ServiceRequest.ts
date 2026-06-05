@@ -25,6 +25,9 @@ export interface IMessage {
   reactions?: IReaction[];
   isPinned?: boolean;
   pinnedAt?: Date;
+  editedAt?: Date;
+  isDeleted?: boolean;
+  deletedAt?: Date;
 }
 
 interface IRatingDetails {
@@ -97,6 +100,9 @@ const MessageSchema = new Schema<IMessage>({
   reactions: { type: [ReactionSchema], default: [] },
   isPinned: { type: Boolean, default: false },
   pinnedAt: { type: Date },
+  editedAt: { type: Date },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
 });
 
 const ProposalSchema = new Schema<IProposal>({
