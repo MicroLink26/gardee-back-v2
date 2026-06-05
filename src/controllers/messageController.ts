@@ -297,3 +297,97 @@ export async function markMessagesAsReadByToken(req: Request, res: Response): Pr
   await request.save();
   res.json({ ok: true, messages: request.messages });
 }
+
+// Ajouter une réaction (prestataire connecté)
+export async function addReaction(req: AuthRequest, res: Response): Promise<void> {
+  const { messageId, emoji } = req.body as { messageId: string; emoji: string };
+  if (!messageId || !emoji) {
+    res.status(400).json({ error: 'messageId et emoji requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    prestataireId: req.user!._id,
+  });
+
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+  if (messageIdx < 0) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const message = request.messages[messageIdx];
+  const reactorEmail = req.user!.email;
+  
+  if (!message.reactions) message.reactions = [];
+  
+  // Vérifier si la réaction existe déjà
+  const existingIdx = message.reactions.findIndex(r => r.emoji === emoji && r.reactorEmail === reactorEmail);
+  if (existingIdx >= 0) {
+    // Supprimer si déjà existant (toggle)
+    message.reactions.splice(existingIdx, 1);
+  } else {
+    // Ajouter la réaction
+    message.reactions.push({
+      emoji,
+      reactorEmail,
+      createdAt: new Date(),
+    } as Parameters<typeof message.reactions.push>[0]);
+  }
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}
+
+// Ajouter une réaction (client via token)
+export async function addReactionByToken(req: Request, res: Response): Promise<void> {
+  const { token, messageId, emoji } = req.body as { token: string; messageId: string; emoji: string };
+  if (!token || !messageId || !emoji) {
+    res.status(400).json({ error: 'token, messageId et emoji requis' });
+    return;
+  }
+
+  const request = await ServiceRequest.findOne({
+    messageToken: token,
+    messageTokenExpiresAt: { $gt: new Date() },
+  });
+
+  if (!request) {
+    res.status(400).json({ error: 'Lien invalide ou expiré' });
+    return;
+  }
+
+  const messageIdx = request.messages.findIndex(m => m._id.toString() === messageId);
+  if (messageIdx < 0) {
+    res.status(404).json({ error: 'Message introuvable' });
+    return;
+  }
+
+  const message = request.messages[messageIdx];
+  const reactorEmail = request.requesterEmail;
+  
+  if (!message.reactions) message.reactions = [];
+  
+  // Vérifier si la réaction existe déjà
+  const existingIdx = message.reactions.findIndex(r => r.emoji === emoji && r.reactorEmail === reactorEmail);
+  if (existingIdx >= 0) {
+    // Supprimer si déjà existant (toggle)
+    message.reactions.splice(existingIdx, 1);
+  } else {
+    // Ajouter la réaction
+    message.reactions.push({
+      emoji,
+      reactorEmail,
+      createdAt: new Date(),
+    } as Parameters<typeof message.reactions.push>[0]);
+  }
+
+  await request.save();
+  res.json({ ok: true, messages: request.messages });
+}

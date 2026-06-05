@@ -8,6 +8,12 @@ interface IProposal {
   createdAt: Date;
 }
 
+interface IReaction {
+  emoji: string;
+  reactorEmail: string;
+  createdAt: Date;
+}
+
 export interface IMessage {
   _id: Types.ObjectId;
   fromRole: 'provider' | 'client';
@@ -16,6 +22,7 @@ export interface IMessage {
   content: string;
   createdAt: Date;
   readBy?: string[];
+  reactions?: IReaction[];
 }
 
 interface IRatingDetails {
@@ -72,6 +79,12 @@ export interface IServiceRequest extends Document {
   updatedAt: Date;
 }
 
+const ReactionSchema = new Schema<IReaction>({
+  emoji: { type: String, required: true },
+  reactorEmail: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
 const MessageSchema = new Schema<IMessage>({
   fromRole: { type: String, enum: ['provider', 'client'], required: true },
   fromEmail: { type: String, required: true },
@@ -79,6 +92,7 @@ const MessageSchema = new Schema<IMessage>({
   content: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   readBy: { type: [String], default: [] },
+  reactions: { type: [ReactionSchema], default: [] },
 });
 
 const ProposalSchema = new Schema<IProposal>({

@@ -31,11 +31,13 @@ router.post('/:id/complete', isConnected, isPrestataire, req.markComplete);
 router.get('/messages/thread', msg.getThreadByToken);                           // public — token client
 router.post('/messages/reply', msg.replyByToken);                               // public — token client
 router.post('/messages/read-by-token', msg.markMessagesAsReadByToken);          // public — token client mark read
+router.post('/messages/react', msg.addReactionByToken);                         // public — token client react
 router.get('/messages/client-threads', isConnected, msg.listClientThreads);     // client connecté — ses fils
 router.get('/messages/threads', isConnected, isPrestataire, msg.listThreads);   // prestataire — liste des fils
 router.get('/:id/messages', isConnected, isPrestataire, msg.getMessages);     // prestataire — fil d'une demande
 router.post('/:id/message', isConnected, isPrestataire, msg.sendMessage);     // prestataire — envoyer
 router.post('/:id/messages/mark-read', isConnected, isPrestataire, msg.markMessagesAsRead);  // prestataire mark read
+router.post('/:id/messages/react', isConnected, isPrestataire, msg.addReaction);  // prestataire react
 router.post('/:id/client/message', isConnected, msg.clientSendMessage);       // client connecte — repondre
 
 export default router;
