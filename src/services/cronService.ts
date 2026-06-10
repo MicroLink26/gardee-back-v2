@@ -52,14 +52,14 @@ export async function geocodeMissingVilleOnly(limit = 100): Promise<number> {
 }
 
 export async function sendUpcomingReminders(): Promise<number> {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const start = new Date(tomorrow.setHours(0, 0, 0, 0));
-  const end = new Date(tomorrow.setHours(23, 59, 59, 999));
+  // Utiliser UTC pour éviter les problèmes de timezone
+  const now = new Date();
+  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+  const dayAfter = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 2, 0, 0, 0, 0));
 
   const requests = await ServiceRequest.find({
     status: 'scheduled',
-    desiredAt: { $gte: start, $lte: end },
+    desiredAt: { $gte: tomorrow, $lt: dayAfter },
   });
 
   let count = 0;
@@ -73,14 +73,14 @@ export async function sendUpcomingReminders(): Promise<number> {
 }
 
 export async function sendRatingRequests(): Promise<number> {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const start = new Date(yesterday.setHours(0, 0, 0, 0));
-  const end = new Date(yesterday.setHours(23, 59, 59, 999));
+  // Utiliser UTC pour éviter les problèmes de timezone
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0, 0));
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
   const requests = await ServiceRequest.find({
     status: 'scheduled',
-    desiredAt: { $gte: start, $lte: end },
+    desiredAt: { $gte: yesterday, $lt: today },
     ratingEmailSentAt: { $exists: false },
   });
 
