@@ -30,25 +30,29 @@ const UserSchema = new Schema<IUser>(
   {
     email: { type: String, unique: true, sparse: true, index: true, lowercase: true, trim: true },
     passwordHash: { type: String },
-    role: { type: String, enum: ['user', 'staff', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'staff', 'admin'], default: 'user', index: true },
     nom: { type: String, required: true, trim: true },
     prenom: { type: String, required: true, trim: true },
     telephone: { type: String, required: true, trim: true },
     cgu: { type: Boolean, default: false },
     consentDataProcessing: { type: Boolean, default: false },
-    is_validated: { type: Boolean, default: true },
+    is_validated: { type: Boolean, default: true, index: true },
     last_login: { type: Date },
-    date_joined: { type: Date, default: Date.now },
+    date_joined: { type: Date, default: Date.now, index: true },
     bannedPermanently: { type: Boolean, default: false },
     rejectedTemporarily: { type: Boolean, default: false },
     rejectionReason: { type: String },
     rejectedAt: { type: Date },
     rejectionPingShown: { type: Boolean, default: false },
     emailVerified: { type: Boolean, default: false },
-    emailVerificationCode: { type: String },
+    emailVerificationCode: { type: String, sparse: true, index: true },
     emailVerificationExpiresAt: { type: Date },
   },
   { timestamps: true }
 );
+
+// Compound index for prestataire queries
+UserSchema.index({ role: 1, is_validated: 1 });
+UserSchema.index({ role: 1, createdAt: -1 });
 
 export const User = model<IUser>('User', UserSchema);

@@ -202,4 +202,13 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
   { timestamps: true }
 );
 
+// Indexes for performance optimization
+ServiceRequestSchema.index({ prestataireId: 1, createdAt: -1 });
+ServiceRequestSchema.index({ status: 1, createdAt: -1 });
+ServiceRequestSchema.index({ requesterEmail: 1 });
+ServiceRequestSchema.index({ clientId: 1, createdAt: -1 });
+ServiceRequestSchema.index({ desiredAt: 1 });
+ServiceRequestSchema.index({ isArchived: 1, prestataireId: 1 });
+ServiceRequestSchema.index({ 'messages.createdAt': 1 });
+
 export const ServiceRequest = model<IServiceRequest>('ServiceRequest', ServiceRequestSchema);

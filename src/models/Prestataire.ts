@@ -59,6 +59,12 @@ const PrestataireSchema = new Schema<IPrestataire>(
   { timestamps: true }
 );
 
+// Indexes for performance optimization
 PrestataireSchema.index({ location: '2dsphere' });
+PrestataireSchema.index({ userId: 1 });
+PrestataireSchema.index({ is_validated: 1, createdAt: -1 });
+PrestataireSchema.index({ ville: 1, is_validated: 1 });
+PrestataireSchema.index({ averageRating: -1, numberOfReviews: -1 });
+PrestataireSchema.index({ createdAt: -1 });
 
 export const Prestataire = model<IPrestataire>('Prestataire', PrestataireSchema);
