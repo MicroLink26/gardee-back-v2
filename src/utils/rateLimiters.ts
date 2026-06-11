@@ -44,3 +44,39 @@ export const reactionLimiter = rateLimit({
   keyGenerator: (req) => req.ip || 'unknown',
   skip: (req) => process.env.NODE_ENV === 'test',
 });
+
+// Rate limiter for creating requests (public - no auth)
+export const createRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 requests per IP per hour
+  message: 'Trop de demandes de service, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for token-based request actions (confirm, resend)
+export const requestTokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests per IP
+  message: 'Trop de tentatives, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for provider actions (accept, propose, refuse)
+export const providerActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per user
+  message: 'Trop d\'actions, veuillez attendre',
+  keyGenerator: (req) => (req as any).user?._id?.toString() || req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for client actions (accept proposal, archive, etc.)
+export const clientActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per user
+  message: 'Trop d\'actions, veuillez attendre',
+  keyGenerator: (req) => (req as any).user?._id?.toString() || req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});

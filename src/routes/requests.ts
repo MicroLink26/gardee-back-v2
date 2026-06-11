@@ -8,35 +8,39 @@ import {
   getThreadLimiter,
   markReadLimiter,
   reactionLimiter,
+  createRequestLimiter,
+  requestTokenLimiter,
+  providerActionLimiter,
+  clientActionLimiter,
 } from '../utils/rateLimiters';
 
 
 const router = Router();
 
 // Public / email-flow
-router.post('/', req.createRequest);
-router.get('/confirm', req.confirmRequest);
-router.post('/resend', req.resendConfirmation);
+router.post('/', createRequestLimiter, req.createRequest);
+router.get('/confirm', requestTokenLimiter, req.confirmRequest);
+router.post('/resend', requestTokenLimiter, req.resendConfirmation);
 
 // Client actions (token-based or authenticated)
-router.post('/:id/client/accept-proposal', isConnected, req.clientAcceptProposal);
-router.get('/proposal/accept', req.clientAcceptProposalByToken);
-router.get('/proposal/refuse', req.clientRefuseProposalByToken);
+router.post('/:id/client/accept-proposal', isConnected, clientActionLimiter, req.clientAcceptProposal);
+router.get('/proposal/accept', requestTokenLimiter, req.clientAcceptProposalByToken);
+router.get('/proposal/refuse', requestTokenLimiter, req.clientRefuseProposalByToken);
 
 // Authenticated client
 router.get('/mine/client', isConnected, req.listMyClientRequests);
-router.patch('/:id/archive', isConnected, req.archiveRequest);
-router.patch('/:id/unarchive', isConnected, req.unarchiveRequest);
-router.post('/:id/labels/add', isConnected, req.addLabel);
-router.post('/:id/labels/remove', isConnected, req.removeLabel);
+router.patch('/:id/archive', isConnected, clientActionLimiter, req.archiveRequest);
+router.patch('/:id/unarchive', isConnected, clientActionLimiter, req.unarchiveRequest);
+router.post('/:id/labels/add', isConnected, clientActionLimiter, req.addLabel);
+router.post('/:id/labels/remove', isConnected, clientActionLimiter, req.removeLabel);
 router.get('/labels', isConnected, req.listLabels);
 
 // Authenticated prestataire
 router.get('/mine', isConnected, isPrestataire, req.listMyRequests);
-router.post('/:id/provider/accept', isConnected, isPrestataire, req.providerAccept);
-router.patch('/:id/provider/propose', isConnected, isPrestataire, req.providerPropose);
-router.post('/:id/provider/refuse', isConnected, isPrestataire, req.providerRefuse);
-router.post('/:id/provider/cancel', isConnected, isPrestataire, req.providerCancel);
+router.post('/:id/provider/accept', isConnected, isPrestataire, providerActionLimiter, req.providerAccept);
+router.patch('/:id/provider/propose', isConnected, isPrestataire, providerActionLimiter, req.providerPropose);
+router.post('/:id/provider/refuse', isConnected, isPrestataire, providerActionLimiter, req.providerRefuse);
+router.post('/:id/provider/cancel', isConnected, isPrestataire, providerActionLimiter, req.providerCancel);
 router.post('/:id/complete', isConnected, isPrestataire, req.markComplete);
 
 // Messaging
