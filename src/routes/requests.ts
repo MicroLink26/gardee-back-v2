@@ -2,6 +2,13 @@ import { Router } from 'express';
 import { isConnected, isPrestataire } from '../middlewares/auth';
 import * as req from '../controllers/requestController';
 import * as msg from '../controllers/messageController';
+import {
+  tokenMessageLimiter,
+  sendMessageLimiter,
+  getThreadLimiter,
+  markReadLimiter,
+  reactionLimiter,
+} from '../utils/rateLimiters';
 
 
 const router = Router();
@@ -33,24 +40,24 @@ router.post('/:id/provider/cancel', isConnected, isPrestataire, req.providerCanc
 router.post('/:id/complete', isConnected, isPrestataire, req.markComplete);
 
 // Messaging
-router.get('/messages/thread', msg.getThreadByToken);                           // public — token client
-router.get('/messages/search', msg.searchMessagesByToken);                      // public — token client search
-router.post('/messages/reply', msg.replyByToken);                               // public — token client
-router.post('/messages/read-by-token', msg.markMessagesAsReadByToken);          // public — token client mark read
-router.post('/messages/react', msg.addReactionByToken);                         // public — token client react
+router.get('/messages/thread', getThreadLimiter, msg.getThreadByToken);                           // public — token client
+router.get('/messages/search', getThreadLimiter, msg.searchMessagesByToken);                      // public — token client search
+router.post('/messages/reply', tokenMessageLimiter, msg.replyByToken);                               // public — token client
+router.post('/messages/read-by-token', markReadLimiter, msg.markMessagesAsReadByToken);          // public — token client mark read
+router.post('/messages/react', reactionLimiter, msg.addReactionByToken);                         // public — token client react
 router.get('/messages/client-threads', isConnected, msg.listClientThreads);     // client connecté — ses fils
 router.get('/messages/threads', isConnected, isPrestataire, msg.listThreads);   // prestataire — liste des fils
 router.get('/:id/messages', isConnected, isPrestataire, msg.getMessages);     // prestataire — fil d'une demande
 router.get('/:id/messages/search', isConnected, isPrestataire, msg.searchMessages);  // prestataire search
-router.post('/:id/message', isConnected, isPrestataire, msg.sendMessage);     // prestataire — envoyer
-router.post('/:id/messages/mark-read', isConnected, isPrestataire, msg.markMessagesAsRead);  // prestataire mark read
-router.post('/:id/messages/react', isConnected, isPrestataire, msg.addReaction);  // prestataire react
+router.post('/:id/message', isConnected, isPrestataire, sendMessageLimiter, msg.sendMessage);     // prestataire — envoyer
+router.post('/:id/messages/mark-read', isConnected, isPrestataire, markReadLimiter, msg.markMessagesAsRead);  // prestataire mark read
+router.post('/:id/messages/react', isConnected, isPrestataire, reactionLimiter, msg.addReaction);  // prestataire react
 router.post('/:id/messages/pin', isConnected, isPrestataire, msg.pinMessage);  // prestataire pin
 router.post('/:id/messages/unpin', isConnected, isPrestataire, msg.unpinMessage);  // prestataire unpin
 router.post('/:id/messages/edit', isConnected, msg.editMessage);  // edit own message
 router.post('/:id/messages/delete', isConnected, msg.deleteMessage);  // soft delete own message
 router.post('/:id/messages/forward', isConnected, msg.forwardMessage);  // forward to another request
 router.get('/:id/messages/forward-targets', isConnected, msg.getForwardTargets);  // list available targets
-router.post('/:id/client/message', isConnected, msg.clientSendMessage);       // client connecte — repondre
+router.post('/:id/client/message', isConnected, sendMessageLimiter, msg.clientSendMessage);       // client connecte — repondre
 
 export default router;

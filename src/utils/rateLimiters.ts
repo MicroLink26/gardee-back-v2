@@ -1,0 +1,46 @@
+import rateLimit from 'express-rate-limit';
+
+// Rate limiter for message endpoints via token (no auth)
+export const tokenMessageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests max
+  message: 'Trop de tentatives, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for sending messages (authenticated)
+export const sendMessageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per user
+  message: 'Vous envoyez trop de messages, veuillez attendre',
+  keyGenerator: (req) => (req as any).user?._id?.toString() || req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for getting thread by token
+export const getThreadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per IP
+  message: 'Trop de requêtes, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for marking messages as read via token
+export const markReadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15, // 15 requests per IP
+  message: 'Trop de requêtes, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for reactions via token
+export const reactionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 25, // 25 requests per IP
+  message: 'Trop de réactions, veuillez attendre',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});

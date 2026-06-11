@@ -5,14 +5,18 @@ import { User } from '../models/User';
 import { AuthRequest } from '../types';
 import { sendMessageToClientEmail, sendMessageToProviderEmail } from '../services/emailService';
 import { sendPushToUser } from '../services/pushService';
+import { validateMessageContent, validateMessageIds, validateToken, validateEmoji } from '../utils/validation';
+import { logEmailError, logMessageActionError } from '../utils/logger';
 
 // Prestataire envoie un message au client (auth requise)
 export async function sendMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { content } = req.body as { content: string };
-  if (!content?.trim()) {
-    res.status(400).json({ error: 'Le message ne peut pas être vide' });
+  const validation = validateMessageContent(req.body?.content);
+  if (!validation.valid) {
+    res.status(400).json({ error: validation.error });
     return;
   }
+
+  const content = (req.body?.content as string).trim();
 
   const request = await ServiceRequest.findOne({
     _id: req.params.id,
@@ -38,7 +42,15 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
 
   await request.save();
 
-  await sendMessageToClientEmail(request, fromName, content.trim(), token).catch(() => {});
+  await sendMessageToClientEmail(request, fromName, content.trim(), token).catch((err) => {
+    logEmailError(
+      'sendMessage: Failed to send email to client',
+      request._id.toString(),
+      req.user!._id.toString(),
+      request.requesterEmail,
+      err
+    );
+  });
 
   // Push notification au client si compte enregistré
   const clientUser = await User.findOne({ email: request.requesterEmail });
@@ -48,7 +60,14 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
       body: content.trim().slice(0, 100),
       url: `/app/messagerie?conversation=${request._id}`,
       requestId: request._id.toString(),
-    }).catch(() => {});
+    }).catch((err) => {
+      logMessageActionError(
+        'sendMessage: Failed to send push notification',
+        request._id.toString(),
+        req.user!._id.toString(),
+        err
+      );
+    });
   }
 
   res.json({ ok: true, messages: request.messages });
@@ -56,11 +75,20 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
 
 // Client repond via token (sans compte)
 export async function replyByToken(req: Request, res: Response): Promise<void> {
-  const { token, content } = req.body as { token: string; content: string };
-  if (!content?.trim()) {
-    res.status(400).json({ error: 'Le message ne peut pas être vide' });
+  const tokenValidation = validateToken(req.body?.token);
+  if (!tokenValidation.valid) {
+    res.status(400).json({ error: tokenValidation.error });
     return;
   }
+
+  const contentValidation = validateMessageContent(req.body?.content);
+  if (!contentValidation.valid) {
+    res.status(400).json({ error: contentValidation.error });
+    return;
+  }
+
+  const token = (req.body?.token as string).trim();
+  const content = (req.body?.content as string).trim();
 
   const request = await ServiceRequest.findOne({
     messageToken: token,
@@ -79,7 +107,7 @@ export async function replyByToken(req: Request, res: Response): Promise<void> {
     fromRole: 'client',
     fromEmail: request.requesterEmail,
     fromName: clientName,
-    content: content.trim(),
+    content,
     createdAt: new Date(),
   } as Parameters<typeof request.messages.push>[0]);
 
@@ -92,13 +120,28 @@ export async function replyByToken(req: Request, res: Response): Promise<void> {
 
   const prestataire = await User.findById(request.prestataireId);
   if (prestataire) {
-    await sendMessageToProviderEmail(request, prestataire, clientName, content.trim()).catch(() => {});
+    await sendMessageToProviderEmail(request, prestataire, clientName, content).catch((err) => {
+      logEmailError(
+        'replyByToken: Failed to send email to provider',
+        request._id.toString(),
+        prestataire._id.toString(),
+        prestataire.email,
+        err
+      );
+    });
     sendPushToUser(prestataire._id, {
       title: `Réponse de ${clientName}`,
-      body: content.trim().slice(0, 100),
+      body: content.slice(0, 100),
       url: `/app/messagerie?conversation=${request._id}`,
       requestId: request._id.toString(),
-    }).catch(() => {});
+    }).catch((err) => {
+      logMessageActionError(
+        'replyByToken: Failed to send push notification',
+        request._id.toString(),
+        prestataire._id.toString(),
+        err
+      );
+    });
   }
 
   res.json({ ok: true, newToken });
@@ -124,16 +167,24 @@ export async function getThreadByToken(req: Request, res: Response): Promise<voi
   const request = await ServiceRequest.findOne({
     messageToken: token,
     messageTokenExpiresAt: { $gt: new Date() },
-  }).select('messages requesterEmail requesterPrenom requesterNom prestataireId');
+  }).select('messages requesterEmail requesterPrenom requesterNom prestataireId messageTokenExpiresAt');
 
   if (!request) {
     res.status(400).json({ error: 'Lien invalide ou expiré' });
     return;
   }
 
+  // Filter messages to show only those created after this token was generated
+  // Token expires in 7 days, so token was created 7 days before expiration
+  let filteredMessages = request.messages;
+  if (request.messageTokenExpiresAt) {
+    const tokenCreatedAt = new Date(request.messageTokenExpiresAt.getTime() - 7 * 86400 * 1000);
+    filteredMessages = request.messages.filter(m => new Date(m.createdAt) >= tokenCreatedAt);
+  }
+
   const prestataire = await User.findById(request.prestataireId).select('prenom nom');
   res.json({
-    messages: request.messages,
+    messages: filteredMessages,
     prestataireName: prestataire ? `${prestataire.prenom} ${prestataire.nom}` : '',
     clientEmail: request.requesterEmail,
   });
@@ -165,8 +216,16 @@ export async function listThreads(req: AuthRequest, res: Response): Promise<void
 
 // Lister les fils de messages pour le client connecte
 export async function listClientThreads(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.user!._id;
+  const userEmail = req.user!.email;
+
+  // Get registered client requests (clientId must match)
+  // OR guest requests where requesterEmail matches AND clientId is empty (not a registered client)
   const requests = await ServiceRequest.find({
-    $or: [{ clientId: req.user!._id }, { requesterEmail: req.user!.email }],
+    $or: [
+      { clientId: userId },
+      { requesterEmail: userEmail, clientId: { $exists: false } },
+    ],
     'messages.0': { $exists: true },
   })
     .select('messages status createdAt updatedAt prestataireId isArchived labels')
@@ -184,7 +243,6 @@ export async function listClientThreads(req: AuthRequest, res: Response): Promis
     lastMessage: r.messages[r.messages.length - 1],
     messages: r.messages,
     createdAt: r.createdAt,
-    messageToken: r.messageToken,
     isArchived: r.isArchived,
     labels: r.labels ?? [],
   }));
@@ -194,11 +252,13 @@ export async function listClientThreads(req: AuthRequest, res: Response): Promis
 
 // Client connecte envoie un message (demande client)
 export async function clientSendMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { content } = req.body as { content: string };
-  if (!content?.trim()) {
-    res.status(400).json({ error: 'Le message ne peut pas être vide' });
+  const validation = validateMessageContent(req.body?.content);
+  if (!validation.valid) {
+    res.status(400).json({ error: validation.error });
     return;
   }
+
+  const content = (req.body?.content as string).trim();
 
   const request = await ServiceRequest.findOne({
     _id: req.params.id,
@@ -214,7 +274,7 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
     fromRole: 'client',
     fromEmail: req.user!.email,
     fromName: clientName,
-    content: content.trim(),
+    content,
     createdAt: new Date(),
   } as Parameters<typeof request.messages.push>[0]);
 
@@ -222,13 +282,28 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
 
   const prestataire = await User.findById(request.prestataireId);
   if (prestataire) {
-    await sendMessageToProviderEmail(request, prestataire, clientName, content.trim()).catch(() => {});
+    await sendMessageToProviderEmail(request, prestataire, clientName, content).catch((err) => {
+      logEmailError(
+        'clientSendMessage: Failed to send email to provider',
+        request._id.toString(),
+        req.user!._id.toString(),
+        prestataire.email,
+        err
+      );
+    });
     sendPushToUser(prestataire._id, {
       title: `Réponse de ${clientName}`,
-      body: content.trim().slice(0, 100),
+      body: content.slice(0, 100),
       url: `/app/messagerie?conversation=${request._id}`,
       requestId: request._id.toString(),
-    }).catch(() => {});
+    }).catch((err) => {
+      logMessageActionError(
+        'clientSendMessage: Failed to send push notification',
+        request._id.toString(),
+        prestataire._id.toString(),
+        err
+      );
+    });
   }
 
   res.json({ ok: true, messages: request.messages });
@@ -236,11 +311,13 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
 
 // Marquer les messages comme lus (prestataire connecté)
 export async function markMessagesAsRead(req: AuthRequest, res: Response): Promise<void> {
-  const { messageIds } = req.body as { messageIds: string[] };
-  if (!messageIds || !Array.isArray(messageIds)) {
-    res.status(400).json({ error: 'messageIds doit être un tableau' });
+  const validation = validateMessageIds(req.body?.messageIds);
+  if (!validation.valid) {
+    res.status(400).json({ error: validation.error });
     return;
   }
+
+  const messageIds = req.body?.messageIds as string[];
 
   const request = await ServiceRequest.findOne({
     _id: req.params.id,
@@ -270,11 +347,20 @@ export async function markMessagesAsRead(req: AuthRequest, res: Response): Promi
 
 // Marquer les messages comme lus (client via token)
 export async function markMessagesAsReadByToken(req: Request, res: Response): Promise<void> {
-  const { token, messageIds } = req.body as { token: string; messageIds: string[] };
-  if (!messageIds || !Array.isArray(messageIds)) {
-    res.status(400).json({ error: 'messageIds doit être un tableau' });
+  const tokenValidation = validateToken(req.body?.token);
+  if (!tokenValidation.valid) {
+    res.status(400).json({ error: tokenValidation.error });
     return;
   }
+
+  const idsValidation = validateMessageIds(req.body?.messageIds);
+  if (!idsValidation.valid) {
+    res.status(400).json({ error: idsValidation.error });
+    return;
+  }
+
+  const token = (req.body?.token as string).trim();
+  const messageIds = req.body?.messageIds as string[];
 
   const request = await ServiceRequest.findOne({
     messageToken: token,
@@ -304,11 +390,19 @@ export async function markMessagesAsReadByToken(req: Request, res: Response): Pr
 
 // Ajouter une réaction (prestataire connecté)
 export async function addReaction(req: AuthRequest, res: Response): Promise<void> {
-  const { messageId, emoji } = req.body as { messageId: string; emoji: string };
-  if (!messageId || !emoji) {
-    res.status(400).json({ error: 'messageId et emoji requis' });
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
     return;
   }
+
+  const emojiValidation = validateEmoji(req.body?.emoji);
+  if (!emojiValidation.valid) {
+    res.status(400).json({ error: emojiValidation.error });
+    return;
+  }
+
+  const emoji = (req.body?.emoji as string).trim();
 
   const request = await ServiceRequest.findOne({
     _id: req.params.id,
@@ -351,11 +445,26 @@ export async function addReaction(req: AuthRequest, res: Response): Promise<void
 
 // Ajouter une réaction (client via token)
 export async function addReactionByToken(req: Request, res: Response): Promise<void> {
-  const { token, messageId, emoji } = req.body as { token: string; messageId: string; emoji: string };
-  if (!token || !messageId || !emoji) {
-    res.status(400).json({ error: 'token, messageId et emoji requis' });
+  const tokenValidation = validateToken(req.body?.token);
+  if (!tokenValidation.valid) {
+    res.status(400).json({ error: tokenValidation.error });
     return;
   }
+
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
+    return;
+  }
+
+  const emojiValidation = validateEmoji(req.body?.emoji);
+  if (!emojiValidation.valid) {
+    res.status(400).json({ error: emojiValidation.error });
+    return;
+  }
+
+  const token = (req.body?.token as string).trim();
+  const emoji = (req.body?.emoji as string).trim();
 
   const request = await ServiceRequest.findOne({
     messageToken: token,
@@ -398,8 +507,14 @@ export async function addReactionByToken(req: Request, res: Response): Promise<v
 
 // Chercher dans les messages d'une demande (prestataire connecté)
 export async function searchMessages(req: AuthRequest, res: Response): Promise<void> {
-  const { q } = req.query as { q: string };
-  if (!q || q.trim().length < 2) {
+  const q = req.query?.q;
+  if (typeof q !== 'string') {
+    res.status(400).json({ error: 'Query doit être une chaîne de caractères' });
+    return;
+  }
+
+  const trimmed = q.trim();
+  if (trimmed.length < 2) {
     res.status(400).json({ error: 'Query doit faire au moins 2 caractères' });
     return;
   }
@@ -414,7 +529,7 @@ export async function searchMessages(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  const query = q.toLowerCase();
+  const query = trimmed.toLowerCase();
   const results = request.messages
     .map((m, idx) => ({
       message: m,
@@ -429,11 +544,25 @@ export async function searchMessages(req: AuthRequest, res: Response): Promise<v
 
 // Chercher dans les messages (client via token)
 export async function searchMessagesByToken(req: Request, res: Response): Promise<void> {
-  const { token, q } = req.query as { token: string; q: string };
-  if (!q || q.trim().length < 2) {
+  const tokenValidation = validateToken(req.query?.token);
+  if (!tokenValidation.valid) {
+    res.status(400).json({ error: tokenValidation.error });
+    return;
+  }
+
+  const q = req.query?.q;
+  if (typeof q !== 'string') {
+    res.status(400).json({ error: 'Query doit être une chaîne de caractères' });
+    return;
+  }
+
+  const trimmed = q.trim();
+  if (trimmed.length < 2) {
     res.status(400).json({ error: 'Query doit faire au moins 2 caractères' });
     return;
   }
+
+  const token = (req.query?.token as string).trim();
 
   const request = await ServiceRequest.findOne({
     messageToken: token,
@@ -445,7 +574,7 @@ export async function searchMessagesByToken(req: Request, res: Response): Promis
     return;
   }
 
-  const query = q.toLowerCase();
+  const query = trimmed.toLowerCase();
   const results = request.messages
     .map((m, idx) => ({
       message: m,
@@ -460,9 +589,9 @@ export async function searchMessagesByToken(req: Request, res: Response): Promis
 
 // Épingler un message (prestataire connecté)
 export async function pinMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { messageId } = req.body as { messageId: string };
-  if (!messageId) {
-    res.status(400).json({ error: 'messageId requis' });
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
     return;
   }
 
@@ -492,9 +621,9 @@ export async function pinMessage(req: AuthRequest, res: Response): Promise<void>
 
 // Dépingler un message (prestataire connecté)
 export async function unpinMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { messageId } = req.body as { messageId: string };
-  if (!messageId) {
-    res.status(400).json({ error: 'messageId requis' });
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
     return;
   }
 
@@ -524,11 +653,19 @@ export async function unpinMessage(req: AuthRequest, res: Response): Promise<voi
 
 // Éditer un message (prestataire ou client selon propriété)
 export async function editMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { messageId, content } = req.body as { messageId: string; content: string };
-  if (!messageId || !content?.trim()) {
-    res.status(400).json({ error: 'messageId et contenu requis' });
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
     return;
   }
+
+  const contentValidation = validateMessageContent(req.body?.content);
+  if (!contentValidation.valid) {
+    res.status(400).json({ error: contentValidation.error });
+    return;
+  }
+
+  const content = (req.body?.content as string).trim();
 
   const request = await ServiceRequest.findOne({
     _id: req.params.id,
@@ -566,7 +703,7 @@ export async function editMessage(req: AuthRequest, res: Response): Promise<void
     editedBy: req.user!.email,
   });
 
-  message.content = content.trim();
+  message.content = content;
   message.editedAt = new Date();
 
   await request.save();
@@ -575,9 +712,9 @@ export async function editMessage(req: AuthRequest, res: Response): Promise<void
 
 // Supprimer un message (soft delete)
 export async function deleteMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { messageId } = req.body as { messageId: string };
-  if (!messageId) {
-    res.status(400).json({ error: 'messageId requis' });
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
     return;
   }
 
@@ -614,9 +751,15 @@ export async function deleteMessage(req: AuthRequest, res: Response): Promise<vo
 
 // Transférer un message à une autre demande
 export async function forwardMessage(req: AuthRequest, res: Response): Promise<void> {
-  const { messageId, targetRequestId } = req.body as { messageId: string; targetRequestId: string };
-  if (!messageId || !targetRequestId) {
-    res.status(400).json({ error: 'messageId et targetRequestId requis' });
+  const messageId = req.body?.messageId;
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    res.status(400).json({ error: 'messageId invalide' });
+    return;
+  }
+
+  const targetRequestId = req.body?.targetRequestId;
+  if (!targetRequestId || typeof targetRequestId !== 'string' || !targetRequestId.trim()) {
+    res.status(400).json({ error: 'targetRequestId invalide' });
     return;
   }
 
