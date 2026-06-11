@@ -12,6 +12,8 @@ import { uploadProfileImage } from '../utils/fileUpload';
 import { sendWelcomeEmail, sendEmailVerificationCode } from '../services/emailService';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
+import { validateEmail, validatePassword, validateTextField, validateNumber, validateStringArray } from '../utils/validation';
+import { logEmailError, logMessageActionError } from '../utils/logger';
 
 function toArray(v: unknown): string[] {
   if (!v) return [];
@@ -21,76 +23,109 @@ function toArray(v: unknown): string[] {
 
 export async function registerPrestataire(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>;
-  const { email, password, nom, prenom, telephone } = body;
 
-  if (!email || !password || !nom || !prenom || !telephone) {
+  if (!body.email || !body.password || !body.nom || !body.prenom || !body.telephone) {
     res.status(400).json({ error: 'Champs obligatoires manquants' });
     return;
   }
 
-  const exists = await User.findOne({ email: (email as string).toLowerCase() });
-  if (exists?.bannedPermanently) {
-    res.status(403).json({ error: 'Cette adresse email ne peut plus être utilisée sur Gardee.' });
-    return;
-  }
-  if (exists) {
-    res.status(409).json({ error: 'Email déjà utilisé' });
+  const emailValidation = validateEmail(body.email);
+  if (!emailValidation.valid) {
+    res.status(400).json({ error: emailValidation.error });
     return;
   }
 
-  const passwordHash = await bcrypt.hash(password as string, 12);
-  const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
-  const user = await User.create({
-    email: (email as string).toLowerCase(),
-    passwordHash,
-    role: 'user',
-    nom, prenom, telephone,
-    cgu: body.cgu ?? false,
-    consentDataProcessing: body.consentDataProcessing ?? false,
-    is_validated: true,
-    emailVerified: false,
-    emailVerificationCode: verificationCode,
-    emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
-  });
-
-  const prestataire = await Prestataire.create({
-    userId: user._id,
-    prestations: toArray(body.prestations),
-    tarifHoraire: body.tarifHoraire,
-    description: body.description,
-    adresse: body.adresse,
-    codePostal: body.codePostal,
-    ville: body.ville,
-    contactCom: body.contactCom ?? false,
-    materielOK: body.materielOK ?? false,
-    isEntrepreneur: body.isEntrepreneur ?? false,
-    siret: body.siret,
-    qualifElagage: body.qualifElagage ?? false,
-    cgu: body.cgu ?? false,
-    is_validated: false,
-  });
-
-  if ((req as Request & { files?: Record<string, unknown> }).files?.photo) {
-    const file = ((req as Request & { files?: Record<string, unknown> }).files as Record<string, UploadedFile>).photo;
-    try {
-      prestataire.profil_image = await uploadProfileImage(file, user._id.toString());
-      await prestataire.save();
-    } catch {
-      // Photo upload failure is non-blocking
-    }
+  const nomValidation = validateTextField(body.nom, 'Nom', 1, 100);
+  if (!nomValidation.valid) {
+    res.status(400).json({ error: nomValidation.error });
+    return;
   }
 
-  geocodeAddress(prestataire.adresse, prestataire.codePostal, prestataire.ville).then(async (geo) => {
-    if (geo) {
-      prestataire.location = { type: 'Point', coordinates: [geo.lng, geo.lat] };
-      prestataire.geocodeStatus = 'ok';
-      prestataire.geocodedAt = new Date();
-      await prestataire.save();
-    }
-  });
+  const prenomValidation = validateTextField(body.prenom, 'Prénom', 1, 100);
+  if (!prenomValidation.valid) {
+    res.status(400).json({ error: prenomValidation.error });
+    return;
+  }
 
-  await sendEmailVerificationCode(user, verificationCode).catch(() => {});
-  res.status(201).json({ ok: true, requiresVerification: true, userId: user._id.toString(), detail: 'Prestataire créé — vérifiez votre email.' });
+  const phoneValidation = validateTextField(body.telephone, 'Téléphone', 1, 20);
+  if (!phoneValidation.valid) {
+    res.status(400).json({ error: phoneValidation.error });
+    return;
+  }
+
+  try {
+    const email = (body.email as string).toLowerCase();
+    const exists = await User.findOne({ email });
+    if (exists?.bannedPermanently) {
+      res.status(403).json({ error: 'Cette adresse email ne peut plus être utilisée sur Gardee.' });
+      return;
+    }
+    if (exists) {
+      res.status(409).json({ error: 'Email déjà utilisé' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(body.password as string, 12);
+    const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
+    const user = await User.create({
+      email,
+      passwordHash,
+      role: 'user',
+      nom: (body.nom as string).trim(),
+      prenom: (body.prenom as string).trim(),
+      telephone: (body.telephone as string).trim(),
+      cgu: body.cgu ?? false,
+      consentDataProcessing: body.consentDataProcessing ?? false,
+      is_validated: true,
+      emailVerified: false,
+      emailVerificationCode: verificationCode,
+      emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    const prestataire = await Prestataire.create({
+      userId: user._id,
+      prestations: toArray(body.prestations),
+      tarifHoraire: body.tarifHoraire,
+      description: body.description,
+      adresse: body.adresse,
+      codePostal: body.codePostal,
+      ville: body.ville,
+      contactCom: body.contactCom ?? false,
+      materielOK: body.materielOK ?? false,
+      isEntrepreneur: body.isEntrepreneur ?? false,
+      siret: body.siret,
+      qualifElagage: body.qualifElagage ?? false,
+      cgu: body.cgu ?? false,
+      is_validated: false,
+    });
+
+    if ((req as Request & { files?: Record<string, unknown> }).files?.photo) {
+      const file = ((req as Request & { files?: Record<string, unknown> }).files as Record<string, UploadedFile>).photo;
+      try {
+        prestataire.profil_image = await uploadProfileImage(file, user._id.toString());
+        await prestataire.save();
+      } catch {
+        // Photo upload failure is non-blocking
+      }
+    }
+
+    geocodeAddress(prestataire.adresse, prestataire.codePostal, prestataire.ville).then(async (geo) => {
+      if (geo) {
+        prestataire.location = { type: 'Point', coordinates: [geo.lng, geo.lat] };
+        prestataire.geocodeStatus = 'ok';
+        prestataire.geocodedAt = new Date();
+        await prestataire.save();
+      }
+    });
+
+    await sendEmailVerificationCode(user, verificationCode).catch((err) => {
+      logEmailError('registerPrestataire: Failed to send verification code', user._id.toString(), user._id.toString(), email, err);
+    });
+    res.status(201).json({ ok: true, requiresVerification: true, userId: user._id.toString(), detail: 'Prestataire créé — vérifiez votre email.' });
+  } catch (error) {
+    logMessageActionError('registerPrestataire: Failed to register', undefined, undefined, error);
+    res.status(500).json({ error: 'Erreur lors de l\'inscription' });
+  }
 }
 
 export async function addPrestataireProfile(req: AuthRequest, res: Response): Promise<void> {
@@ -98,24 +133,30 @@ export async function addPrestataireProfile(req: AuthRequest, res: Response): Pr
     res.status(409).json({ error: 'Vous avez déjà un profil prestataire' });
     return;
   }
-  const body = req.body as Record<string, unknown>;
-  const prestataire = await Prestataire.create({
-    userId: req.user!._id,
-    prestations: toArray(body.prestations),
-    tarifHoraire: body.tarifHoraire,
-    description: body.description,
-    adresse: body.adresse,
-    codePostal: body.codePostal,
-    ville: body.ville,
-    contactCom: body.contactCom ?? false,
-    materielOK: body.materielOK ?? false,
-    isEntrepreneur: body.isEntrepreneur ?? false,
-    siret: body.siret,
-    qualifElagage: body.qualifElagage ?? false,
-    cgu: body.cgu ?? false,
-    is_validated: false,
-  });
-  res.status(201).json({ ok: true, prestataire, detail: 'Profil prestataire créé, en attente de validation.' });
+
+  try {
+    const body = req.body as Record<string, unknown>;
+    const prestataire = await Prestataire.create({
+      userId: req.user!._id,
+      prestations: toArray(body.prestations),
+      tarifHoraire: body.tarifHoraire,
+      description: body.description,
+      adresse: body.adresse,
+      codePostal: body.codePostal,
+      ville: body.ville,
+      contactCom: body.contactCom ?? false,
+      materielOK: body.materielOK ?? false,
+      isEntrepreneur: body.isEntrepreneur ?? false,
+      siret: body.siret,
+      qualifElagage: body.qualifElagage ?? false,
+      cgu: body.cgu ?? false,
+      is_validated: false,
+    });
+    res.status(201).json({ ok: true, prestataire, detail: 'Profil prestataire créé, en attente de validation.' });
+  } catch (error) {
+    logMessageActionError('addPrestataireProfile: Failed to create prestataire profile', undefined, req.user!._id.toString(), error);
+    res.status(500).json({ error: 'Erreur lors de la création du profil' });
+  }
 }
 
 export async function updateMyPrestataire(req: AuthRequest, res: Response): Promise<void> {
@@ -123,33 +164,39 @@ export async function updateMyPrestataire(req: AuthRequest, res: Response): Prom
     res.status(404).json({ error: 'Profil prestataire introuvable' });
     return;
   }
-  const EDITABLE = ['prestations', 'tarifHoraire', 'description', 'adresse', 'codePostal',
-    'ville', 'contactCom', 'materielOK', 'isEntrepreneur', 'siret', 'qualifElagage'];
-  const REVALIDATION_FIELDS = ['prestations', 'tarifHoraire', 'description', 'isEntrepreneur', 'siret', 'qualifElagage'];
-  const body = req.body as Record<string, unknown>;
-  const prest = req.prestataire;
 
-  let needsRevalidation = false;
-  for (const field of EDITABLE) {
-    if (body[field] !== undefined) {
-      const value = field === 'prestations' ? toArray(body[field]) : body[field];
-      (prest as unknown as Record<string, unknown>)[field] = value;
-      if (REVALIDATION_FIELDS.includes(field)) needsRevalidation = true;
+  try {
+    const EDITABLE = ['prestations', 'tarifHoraire', 'description', 'adresse', 'codePostal',
+      'ville', 'contactCom', 'materielOK', 'isEntrepreneur', 'siret', 'qualifElagage'];
+    const REVALIDATION_FIELDS = ['prestations', 'tarifHoraire', 'description', 'isEntrepreneur', 'siret', 'qualifElagage'];
+    const body = req.body as Record<string, unknown>;
+    const prest = req.prestataire;
+
+    let needsRevalidation = false;
+    for (const field of EDITABLE) {
+      if (body[field] !== undefined) {
+        const value = field === 'prestations' ? toArray(body[field]) : body[field];
+        (prest as unknown as Record<string, unknown>)[field] = value;
+        if (REVALIDATION_FIELDS.includes(field)) needsRevalidation = true;
+      }
     }
-  }
 
-  if ((req as Request & { files?: Record<string, unknown> }).files?.photo) {
-    const file = ((req as Request & { files?: Record<string, unknown> }).files as Record<string, UploadedFile>).photo;
-    prest.profil_image = await uploadProfileImage(file, req.user!._id.toString());
-    needsRevalidation = true;
-  }
+    if ((req as Request & { files?: Record<string, unknown> }).files?.photo) {
+      const file = ((req as Request & { files?: Record<string, unknown> }).files as Record<string, UploadedFile>).photo;
+      prest.profil_image = await uploadProfileImage(file, req.user!._id.toString());
+      needsRevalidation = true;
+    }
 
-  if (needsRevalidation && prest.is_validated) {
-    prest.is_validated = false;
-  }
+    if (needsRevalidation && prest.is_validated) {
+      prest.is_validated = false;
+    }
 
-  await prest.save();
-  res.json({ user: serializeUser(req.user!, prest), revalidationRequired: needsRevalidation });
+    await prest.save();
+    res.json({ user: serializeUser(req.user!, prest), revalidationRequired: needsRevalidation });
+  } catch (error) {
+    logMessageActionError('updateMyPrestataire: Failed to update prestataire profile', undefined, req.user!._id.toString(), error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+  }
 }
 
 export async function getPublicProfile(req: Request, res: Response): Promise<void> {
@@ -272,33 +319,38 @@ export async function getRanking(req: Request, res: Response): Promise<void> {
 }
 
 export async function getReviews(req: Request, res: Response): Promise<void> {
-  const { ServiceRequest } = await import('../models/ServiceRequest');
-  const { id } = req.params;
-  const { page = '1', pageSize = '10' } = req.query as Record<string, string>;
-  const skip = (parseInt(page) - 1) * parseInt(pageSize);
+  try {
+    const { ServiceRequest } = await import('../models/ServiceRequest');
+    const { id } = req.params;
+    const { page = '1', pageSize = '10' } = req.query as Record<string, string>;
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
 
-  const prestataire = await Prestataire.findOne({ userId: id })
-    .populate<{ userId: { _id: string; nom: string; prenom: string } }>('userId', 'nom prenom');
-  if (!prestataire) {
-    res.status(404).json({ error: 'Prestataire introuvable' });
-    return;
+    const prestataire = await Prestataire.findOne({ userId: id })
+      .populate<{ userId: { _id: string; nom: string; prenom: string } }>('userId', 'nom prenom');
+    if (!prestataire) {
+      res.status(404).json({ error: 'Prestataire introuvable' });
+      return;
+    }
+
+    const filter = { prestataireId: id, ratingDetails: { $exists: true }, reviewApproved: { $ne: false } };
+    const [items, total] = await Promise.all([
+      ServiceRequest.find(filter)
+        .select('ratingDetails ratingComment recommend ratingGivenAt desiredAt prestations requesterPrenom requesterNom')
+        .sort({ ratingGivenAt: -1 })
+        .skip(skip)
+        .limit(parseInt(pageSize)),
+      ServiceRequest.countDocuments(filter),
+    ]);
+
+    const u = prestataire.userId as { _id: string; nom: string; prenom: string };
+    res.json({
+      prestataire: { _id: u._id, nom: u.nom, prenom: u.prenom, averageRating: prestataire.averageRating, numberOfReviews: prestataire.numberOfReviews },
+      items, total, page: parseInt(page), pageSize: parseInt(pageSize),
+    });
+  } catch (error) {
+    logMessageActionError('getReviews: Failed to fetch reviews', undefined, undefined, error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des avis' });
   }
-
-  const filter = { prestataireId: id, ratingDetails: { $exists: true }, reviewApproved: { $ne: false } };
-  const [items, total] = await Promise.all([
-    ServiceRequest.find(filter)
-      .select('ratingDetails ratingComment recommend ratingGivenAt desiredAt prestations requesterPrenom requesterNom')
-      .sort({ ratingGivenAt: -1 })
-      .skip(skip)
-      .limit(parseInt(pageSize)),
-    ServiceRequest.countDocuments(filter),
-  ]);
-
-  const u = prestataire.userId as { _id: string; nom: string; prenom: string };
-  res.json({
-    prestataire: { _id: u._id, nom: u.nom, prenom: u.prenom, averageRating: prestataire.averageRating, numberOfReviews: prestataire.numberOfReviews },
-    items, total, page: parseInt(page), pageSize: parseInt(pageSize),
-  });
 }
 
 export async function deleteMyPrestataire(req: AuthRequest, res: Response): Promise<void> {
