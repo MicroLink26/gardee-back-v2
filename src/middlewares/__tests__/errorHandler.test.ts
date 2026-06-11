@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { errorHandler, notFound } from '../errorHandler';
+import * as logger from '../../utils/logger';
+
+jest.mock('../../utils/logger');
 
 describe('errorHandler middlewares', () => {
   let res: Partial<Response>;
@@ -10,11 +13,7 @@ describe('errorHandler middlewares', () => {
     json = jest.fn();
     status = jest.fn().mockReturnValue({ json });
     res = { status, json };
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('errorHandler', () => {
@@ -32,7 +31,12 @@ describe('errorHandler middlewares', () => {
 
       errorHandler(err, {} as Request, res as Response, jest.fn() as unknown as NextFunction);
 
-      expect(console.error).toHaveBeenCalledWith(err);
+      expect(logger.logMessageActionError).toHaveBeenCalledWith(
+        'errorHandler: Unhandled error',
+        undefined,
+        undefined,
+        err
+      );
     });
   });
 

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
 import { AuthRequest } from '../types';
+import { logMessageActionError } from '../utils/logger';
 
 export async function isConnected(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const header = req.headers.authorization;
@@ -21,7 +22,12 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
     req.user = user;
     req.prestataire = await Prestataire.findOne({ userId: user._id });
     next();
-  } catch {
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      logMessageActionError('isConnected: JWT verification failed', undefined, undefined, error);
+    } else {
+      logMessageActionError('isConnected: Authentication error', undefined, undefined, error);
+    }
     res.status(401).json({ error: 'Token invalide' });
   }
 }
