@@ -4,8 +4,8 @@ import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
-import { validateEmail, validatePassword, validateTextField, validateNumber } from '../utils/validation';
-import { logEmailError, logMessageActionError } from '../utils/logger';
+import { validateEmail, validatePassword, validateTextField } from '../utils/validation';
+import { logMessageActionError } from '../utils/logger';
 
 const USER_EDITABLE_FIELDS = ['email', 'nom', 'prenom', 'telephone', 'consentDataProcessing'];
 

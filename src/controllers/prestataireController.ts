@@ -9,10 +9,10 @@ import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
 import { geocodeAddress } from '../utils/geocoding';
 import { uploadProfileImage } from '../utils/fileUpload';
-import { sendWelcomeEmail, sendEmailVerificationCode } from '../services/emailService';
+import { sendEmailVerificationCode } from '../services/emailService';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
-import { validateEmail, validatePassword, validateTextField, validateNumber, validateStringArray } from '../utils/validation';
+import { validateEmail, validateTextField } from '../utils/validation';
 import { logEmailError, logMessageActionError } from '../utils/logger';
 
 function toArray(v: unknown): string[] {
