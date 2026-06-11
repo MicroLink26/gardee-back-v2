@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { Contact } from '../models/Contact';
+import { logMessageActionError } from '../utils/logger';
 
 const router = Router();
 
@@ -12,14 +13,19 @@ router.post(
     body('message').isString().notEmpty().trim(),
   ],
   async (req: Request, res: Response) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({ errors: errors.array() });
-      return;
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+      const { email, name, message } = req.body as { email: string; name: string; message: string };
+      await Contact.create({ email, name, message });
+      res.json({ ok: true });
+    } catch (error) {
+      logMessageActionError('contact: Failed to create contact message', undefined, undefined, error);
+      res.status(500).json({ error: 'Erreur lors de l\'envoi du message' });
     }
-    const { email, name, message } = req.body as { email: string; name: string; message: string };
-    await Contact.create({ email, name, message });
-    res.json({ ok: true });
   }
 );
 
