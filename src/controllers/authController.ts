@@ -9,6 +9,8 @@ import { signAccessToken, createRefreshToken } from '../utils/tokens';
 import { sendForgotPasswordEmail, sendWelcomeClientEmail, sendEmailVerificationCode } from '../services/emailService';
 import { serializeUser } from '../utils/serializeUser';
 import { AuthRequest } from '../types';
+import { validateEmail, validatePassword, validateTextField, validateToken } from '../utils/validation';
+import { logEmailError, logMessageActionError } from '../utils/logger';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -18,19 +20,52 @@ const COOKIE_OPTS = {
 };
 
 export async function checkEmail(req: Request, res: Response): Promise<void> {
-  const email = (req.query as { email?: string }).email?.toLowerCase();
-  if (!email) { res.status(400).json({ error: 'Email requis' }); return; }
+  const emailValidation = validateEmail(req.query?.email);
+  if (!emailValidation.valid) {
+    res.status(400).json({ error: emailValidation.error });
+    return;
+  }
+
+  const email = ((req.query?.email as string).toLowerCase());
   const user = await User.findOne({ email }).select('_id bannedPermanently');
   res.json({ exists: !!user, bannedPermanently: user?.bannedPermanently ?? false });
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
-  const { email, password, nom, prenom } = req.body as { email: string; password: string; nom: string; prenom: string };
-  if (!email || !password || !nom || !prenom) {
-    res.status(400).json({ error: 'Tous les champs sont requis' });
+  // Validate email
+  const emailValidation = validateEmail(req.body?.email);
+  if (!emailValidation.valid) {
+    res.status(400).json({ error: emailValidation.error });
     return;
   }
-  const existing = await User.findOne({ email: email.toLowerCase() });
+
+  // Validate password
+  const passwordValidation = validatePassword(req.body?.password);
+  if (!passwordValidation.valid) {
+    res.status(400).json({ error: passwordValidation.error });
+    return;
+  }
+
+  // Validate nom
+  const nomValidation = validateTextField(req.body?.nom, 'Nom', 1, 100);
+  if (!nomValidation.valid) {
+    res.status(400).json({ error: nomValidation.error });
+    return;
+  }
+
+  // Validate prenom
+  const prenomValidation = validateTextField(req.body?.prenom, 'Prénom', 1, 100);
+  if (!prenomValidation.valid) {
+    res.status(400).json({ error: prenomValidation.error });
+    return;
+  }
+
+  const email = (req.body?.email as string).toLowerCase();
+  const password = req.body?.password as string;
+  const nom = (req.body?.nom as string).trim();
+  const prenom = (req.body?.prenom as string).trim();
+
+  const existing = await User.findOne({ email });
   if (existing?.bannedPermanently) {
     res.status(403).json({ error: 'Cette adresse email ne peut plus être utilisée sur Gardee.' });
     return;
@@ -39,20 +74,32 @@ export async function register(req: Request, res: Response): Promise<void> {
     res.status(409).json({ error: 'Un compte existe déjà avec cet email' });
     return;
   }
-  const passwordHash = await bcrypt.hash(password, 10);
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  const user = await User.create({
-    email: email.toLowerCase(), passwordHash, nom, prenom, role: 'user',
-    emailVerified: false,
-    emailVerificationCode: code,
-    emailVerificationExpiresAt: expiresAt,
-  });
+  try {
+    const passwordHash = await bcrypt.hash(password, 10);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  sendEmailVerificationCode(user, code).catch(() => {});
+    const user = await User.create({
+      email,
+      passwordHash,
+      nom,
+      prenom,
+      role: 'user',
+      emailVerified: false,
+      emailVerificationCode: code,
+      emailVerificationExpiresAt: expiresAt,
+    });
 
-  res.status(201).json({ requiresVerification: true, userId: user._id.toString() });
+    await sendEmailVerificationCode(user, code).catch((err) => {
+      logEmailError('register: Failed to send verification code', user._id.toString(), user._id.toString(), email, err);
+    });
+
+    res.status(201).json({ requiresVerification: true, userId: user._id.toString() });
+  } catch (error) {
+    logMessageActionError('register: Failed to create user', undefined, undefined, error);
+    res.status(500).json({ error: 'Erreur lors de l\'inscription' });
+  }
 }
 
 export async function verifyEmail(req: Request, res: Response): Promise<void> {
@@ -101,39 +148,63 @@ export async function resendVerification(req: Request, res: Response): Promise<v
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
-  const { email, password } = req.body as { email: string; password: string };
-  const user = await User.findOne({ email: email?.toLowerCase() });
-  if (!user || !user.passwordHash) {
+  // Validate email
+  const emailValidation = validateEmail(req.body?.email);
+  if (!emailValidation.valid) {
     res.status(401).json({ error: 'Identifiants invalides' });
     return;
   }
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
+
+  // Validate password exists
+  const password = req.body?.password;
+  if (!password || typeof password !== 'string' || password.length === 0) {
     res.status(401).json({ error: 'Identifiants invalides' });
     return;
   }
-  if (!user.emailVerified) {
-    // Renew verification code if expired
-    if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      user.emailVerificationCode = code;
-      user.emailVerificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-      await user.save();
-      sendEmailVerificationCode(user, code).catch(() => {});
+
+  const email = (req.body?.email as string).toLowerCase();
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user || !user.passwordHash) {
+      res.status(401).json({ error: 'Identifiants invalides' });
+      return;
     }
-    res.status(403).json({ requiresVerification: true, userId: user._id.toString() });
-    return;
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: 'Identifiants invalides' });
+      return;
+    }
+
+    if (!user.emailVerified) {
+      // Renew verification code if expired
+      if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        user.emailVerificationCode = code;
+        user.emailVerificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        await user.save();
+        await sendEmailVerificationCode(user, code).catch((err) => {
+          logEmailError('login: Failed to send verification code', user._id.toString(), user._id.toString(), email, err);
+        });
+      }
+      res.status(403).json({ requiresVerification: true, userId: user._id.toString() });
+      return;
+    }
+
+    user.last_login = new Date();
+    await user.save();
+
+    const prestataire = await Prestataire.findOne({ userId: user._id });
+    const accessToken = signAccessToken(user._id);
+    const refreshToken = await createRefreshToken(user._id);
+
+    res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
+    res.json({ user: serializeUser(user, prestataire), accessToken });
+  } catch (error) {
+    logMessageActionError('login: Failed to authenticate', undefined, undefined, error);
+    res.status(500).json({ error: 'Erreur lors de la connexion' });
   }
-
-  user.last_login = new Date();
-  await user.save();
-
-  const prestataire = await Prestataire.findOne({ userId: user._id });
-  const accessToken = signAccessToken(user._id);
-  const refreshToken = await createRefreshToken(user._id);
-
-  res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
-  res.json({ user: serializeUser(user, prestataire), accessToken });
 }
 
 export async function refresh(req: Request, res: Response): Promise<void> {
@@ -178,52 +249,117 @@ export async function getRoles(req: AuthRequest, res: Response): Promise<void> {
 }
 
 export async function forgotPassword(req: Request, res: Response): Promise<void> {
-  const { email } = req.body as { email: string };
-  const user = await User.findOne({ email: email?.toLowerCase() });
-  if (user) {
-    const token = nanoid(32);
-    await PasswordReset.create({
-      user: user._id,
-      token,
-      expiresAt: new Date(Date.now() + 3600 * 1000),
-    });
-    await sendForgotPasswordEmail(user.email, token);
+  // Validate email
+  const emailValidation = validateEmail(req.body?.email);
+  if (!emailValidation.valid) {
+    res.status(400).json({ error: emailValidation.error });
+    return;
   }
-  res.json({ ok: true });
+
+  const email = (req.body?.email as string).toLowerCase();
+
+  try {
+    const user = await User.findOne({ email });
+    if (user) {
+      const token = nanoid(32);
+      await PasswordReset.create({
+        user: user._id,
+        token,
+        expiresAt: new Date(Date.now() + 3600 * 1000),
+      });
+      await sendForgotPasswordEmail(user.email, token).catch((err) => {
+        logEmailError('forgotPassword: Failed to send reset email', undefined, user._id.toString(), email, err);
+      });
+    }
+    // Always return success to avoid email enumeration
+    res.json({ ok: true });
+  } catch (error) {
+    logMessageActionError('forgotPassword: Failed to process', undefined, undefined, error);
+    res.status(500).json({ error: 'Erreur lors du traitement' });
+  }
 }
 
 export async function resetPassword(req: Request, res: Response): Promise<void> {
-  const { token, password } = req.body as { token: string; password: string };
-  const record = await PasswordReset.findOne({ token, used: false });
-  if (!record || record.expiresAt < new Date()) {
-    res.status(400).json({ error: 'Token invalide ou expiré' });
+  // Validate token
+  const tokenValidation = validateToken(req.body?.token);
+  if (!tokenValidation.valid) {
+    res.status(400).json({ error: tokenValidation.error });
     return;
   }
-  const hash = await bcrypt.hash(password, 12);
-  await User.findByIdAndUpdate(record.user, { passwordHash: hash });
-  await RefreshToken.deleteMany({ user: record.user });
-  record.used = true;
-  await record.save();
-  res.json({ ok: true });
+
+  const token = (req.body?.token as string).trim();
+
+  try {
+    // Check token first before validating password
+    const record = await PasswordReset.findOne({ token, used: false });
+    if (!record || record.expiresAt < new Date()) {
+      res.status(400).json({ error: 'Token invalide ou expiré' });
+      return;
+    }
+
+    // Then validate password
+    const passwordValidation = validatePassword(req.body?.password);
+    if (!passwordValidation.valid) {
+      res.status(400).json({ error: passwordValidation.error });
+      return;
+    }
+
+    const password = req.body?.password as string;
+    const hash = await bcrypt.hash(password, 12);
+    await User.findByIdAndUpdate(record.user, { passwordHash: hash });
+    await RefreshToken.deleteMany({ user: record.user });
+    record.used = true;
+    await record.save();
+
+    res.json({ ok: true });
+  } catch (error) {
+    logMessageActionError('resetPassword: Failed to reset', undefined, undefined, error);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation' });
+  }
 }
 
 export async function changePassword(req: AuthRequest, res: Response): Promise<void> {
-  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
-  if (!currentPassword || !newPassword) {
+  // Validate current password
+  const currentPassword = req.body?.currentPassword;
+  if (!currentPassword || typeof currentPassword !== 'string' || currentPassword.length === 0) {
     res.status(400).json({ error: 'Champs requis manquants' });
     return;
   }
+
+  // Validate new password
+  const newPassword = req.body?.newPassword;
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length === 0) {
+    res.status(400).json({ error: 'Champs requis manquants' });
+    return;
+  }
+
   if (newPassword.length < 8) {
     res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
     return;
   }
-  const user = req.user!;
-  const valid = await bcrypt.compare(currentPassword, user.passwordHash!);
-  if (!valid) {
-    res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+
+  if (newPassword.length > 128) {
+    res.status(400).json({ error: 'Le mot de passe ne peut pas dépasser 128 caractères' });
     return;
   }
-  user.passwordHash = await bcrypt.hash(newPassword, 12);
-  await user.save();
-  res.json({ ok: true });
+
+  try {
+    const user = req.user!;
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash!);
+    if (!valid) {
+      res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+      return;
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    // Invalidate all existing refresh tokens for security
+    await RefreshToken.deleteMany({ user: user._id });
+
+    res.json({ ok: true });
+  } catch (error) {
+    logMessageActionError('changePassword: Failed to change password', undefined, req.user!._id.toString(), error);
+    res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
+  }
 }

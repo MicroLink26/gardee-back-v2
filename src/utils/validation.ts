@@ -189,3 +189,35 @@ export function validateLabelName(labelName: unknown): { valid: boolean; error?:
 
   return { valid: true };
 }
+
+// Password validation (for registration)
+export function validatePassword(password: unknown): { valid: boolean; error?: string } {
+  if (typeof password !== 'string') {
+    return { valid: false, error: 'Le mot de passe doit être une chaîne de caractères' };
+  }
+
+  if (!password || password.length === 0) {
+    return { valid: false, error: 'Le mot de passe ne peut pas être vide' };
+  }
+
+  if (password.length < 8) {
+    return { valid: false, error: 'Le mot de passe doit contenir au moins 8 caractères' };
+  }
+
+  if (password.length > 128) {
+    return { valid: false, error: 'Le mot de passe ne peut pas dépasser 128 caractères' };
+  }
+
+  // Check for variety - at least one letter and one digit
+  const hasLetters = /[a-zA-Z]/.test(password);
+  const hasDigits = /[0-9]/.test(password);
+
+  if (!hasLetters || !hasDigits) {
+    return {
+      valid: false,
+      error: 'Le mot de passe doit contenir des lettres et des chiffres',
+    };
+  }
+
+  return { valid: true };
+}

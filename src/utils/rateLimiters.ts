@@ -80,3 +80,39 @@ export const clientActionLimiter = rateLimit({
   keyGenerator: (req) => (req as any).user?._id?.toString() || req.ip || 'unknown',
   skip: (req) => process.env.NODE_ENV === 'test',
 });
+
+// Rate limiter for login attempts
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per IP
+  message: 'Trop de tentatives de connexion, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for registration
+export const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 registrations per IP
+  message: 'Trop de tentatives d\'inscription, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for forgot password
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 requests per IP
+  message: 'Trop de tentatives, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
+
+// Rate limiter for reset password
+export const resetPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 attempts per IP
+  message: 'Trop de tentatives, veuillez réessayer plus tard',
+  keyGenerator: (req) => req.ip || 'unknown',
+  skip: (req) => process.env.NODE_ENV === 'test',
+});
