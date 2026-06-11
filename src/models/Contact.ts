@@ -10,9 +10,9 @@ export interface IContact extends Document {
 
 const ContactSchema = new Schema<IContact>(
   {
-    email: { type: String, required: true },
-    name: { type: String, required: true },
-    message: { type: String, required: true },
+    email: { type: String, required: true, lowercase: true, trim: true, maxlength: 255 },
+    name: { type: String, required: true, trim: true, maxlength: 200 },
+    message: { type: String, required: true, trim: true, maxlength: 5000 },
   },
   { timestamps: true }
 );

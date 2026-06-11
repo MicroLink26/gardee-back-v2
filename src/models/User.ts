@@ -28,12 +28,12 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
-    email: { type: String, unique: true, sparse: true, index: true, lowercase: true, trim: true },
+    email: { type: String, unique: true, sparse: true, index: true, lowercase: true, trim: true, maxlength: 255 },
     passwordHash: { type: String },
     role: { type: String, enum: ['user', 'staff', 'admin'], default: 'user', index: true },
-    nom: { type: String, required: true, trim: true },
-    prenom: { type: String, required: true, trim: true },
-    telephone: { type: String, required: true, trim: true },
+    nom: { type: String, required: true, trim: true, maxlength: 100 },
+    prenom: { type: String, required: true, trim: true, maxlength: 100 },
+    telephone: { type: String, required: true, trim: true, maxlength: 20 },
     cgu: { type: Boolean, default: false },
     consentDataProcessing: { type: Boolean, default: false },
     is_validated: { type: Boolean, default: true, index: true },
@@ -41,7 +41,7 @@ const UserSchema = new Schema<IUser>(
     date_joined: { type: Date, default: Date.now, index: true },
     bannedPermanently: { type: Boolean, default: false },
     rejectedTemporarily: { type: Boolean, default: false },
-    rejectionReason: { type: String },
+    rejectionReason: { type: String, maxlength: 1000 },
     rejectedAt: { type: Date },
     rejectionPingShown: { type: Boolean, default: false },
     emailVerified: { type: Boolean, default: false },

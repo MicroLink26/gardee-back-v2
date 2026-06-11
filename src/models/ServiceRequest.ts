@@ -103,28 +103,28 @@ export interface IServiceRequest extends Document {
 }
 
 const ReactionSchema = new Schema<IReaction>({
-  emoji: { type: String, required: true },
-  reactorEmail: { type: String, required: true },
+  emoji: { type: String, required: true, maxlength: 8 },
+  reactorEmail: { type: String, required: true, maxlength: 255 },
   createdAt: { type: Date, default: Date.now },
 });
 
 const LabelSchema = new Schema<ILabel>({
-  name: { type: String, required: true },
-  color: { type: String },
+  name: { type: String, required: true, maxlength: 50 },
+  color: { type: String, maxlength: 20 },
   createdAt: { type: Date, default: Date.now },
 });
 
 const EditHistorySchema = new Schema<IEditHistory>({
-  previousContent: { type: String, required: true },
+  previousContent: { type: String, required: true, maxlength: 5000 },
   editedAt: { type: Date, required: true },
-  editedBy: { type: String, required: true },
+  editedBy: { type: String, required: true, maxlength: 255 },
 });
 
 const MessageSchema = new Schema<IMessage>({
   fromRole: { type: String, enum: ['provider', 'client'], required: true },
-  fromEmail: { type: String, required: true },
-  fromName: { type: String, required: true },
-  content: { type: String, required: true },
+  fromEmail: { type: String, required: true, maxlength: 255 },
+  fromName: { type: String, required: true, maxlength: 200 },
+  content: { type: String, required: true, maxlength: 5000 },
   createdAt: { type: Date, default: Date.now },
   readBy: { type: [String], default: [] },
   reactions: { type: [ReactionSchema], default: [] },
@@ -139,7 +139,7 @@ const MessageSchema = new Schema<IMessage>({
 const ProposalSchema = new Schema<IProposal>({
   by: { type: String, enum: ['provider', 'client'], required: true },
   date: { type: Date, required: true },
-  comment: { type: String },
+  comment: { type: String, maxlength: 1000 },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -155,18 +155,18 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
   {
     prestataireId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     clientId: { type: Schema.Types.ObjectId, ref: 'User' },
-    requesterEmail: { type: String, required: true, lowercase: true, trim: true },
-    requesterNom: { type: String },
-    requesterPrenom: { type: String },
-    requesterTelephone: { type: String },
-    prestations: [{ type: String }],
-    estimatedHours: { type: Number },
+    requesterEmail: { type: String, required: true, lowercase: true, trim: true, maxlength: 255 },
+    requesterNom: { type: String, maxlength: 100 },
+    requesterPrenom: { type: String, maxlength: 100 },
+    requesterTelephone: { type: String, maxlength: 20 },
+    prestations: [{ type: String, maxlength: 100 }],
+    estimatedHours: { type: Number, min: 0, max: 1000 },
     recurring: { type: Boolean, default: false },
-    description: { type: String },
-    subject: { type: String },
-    address: { type: String },
-    codePostal: { type: String },
-    ville: { type: String },
+    description: { type: String, maxlength: 5000 },
+    subject: { type: String, maxlength: 300 },
+    address: { type: String, maxlength: 500 },
+    codePostal: { type: String, maxlength: 20 },
+    ville: { type: String, maxlength: 100 },
     desiredAt: { type: Date },
     status: {
       type: String,
@@ -189,7 +189,7 @@ const ServiceRequestSchema = new Schema<IServiceRequest>(
     archivedAt: { type: Date },
     labels: { type: [LabelSchema], default: [] },
     ratingDetails: { type: RatingSchema },
-    ratingComment: { type: String },
+    ratingComment: { type: String, maxlength: 1000 },
     recommend: { type: Boolean },
     ratingGivenAt: { type: Date },
     proposalToken: { type: String, index: true },

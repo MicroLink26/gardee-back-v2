@@ -9,10 +9,10 @@ export interface IPushSubscription extends Document {
 
 const PushSubscriptionSchema = new Schema<IPushSubscription>({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  endpoint: { type: String, required: true },
+  endpoint: { type: String, required: true, maxlength: 2000 },
   keys: {
-    p256dh: { type: String, required: true },
-    auth: { type: String, required: true },
+    p256dh: { type: String, required: true, maxlength: 500 },
+    auth: { type: String, required: true, maxlength: 500 },
   },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
