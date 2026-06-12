@@ -1,0 +1,37 @@
+name: CI
+
+# Garde-fou : Northflank déploie en production à chaque push sur master.
+# Ce workflow fait tourner type-check + tests sur le même commit — si le
+# run est rouge, le code déployé est suspect et doit être corrigé ou revert.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx jest --no-coverage --forceExit
+        env:
+          NODE_ENV: test
+
+      - name: Build
+        run: npm run build
