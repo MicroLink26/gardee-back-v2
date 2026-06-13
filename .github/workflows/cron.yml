@@ -1,0 +1,23 @@
+name: Cron daily
+
+on:
+  schedule:
+    # Tous les jours à 07h00 UTC (09h00 Paris en été)
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Appel cron/daily
+        run: |
+          RESPONSE=$(curl -s -w "\nHTTP %{http_code}" \
+            "${{ secrets.API_URL }}/cron/daily?token=${{ secrets.CRON_SECRET }}")
+          echo "$RESPONSE"
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1 | grep -oE '[0-9]+')
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Cron failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
