@@ -293,14 +293,12 @@ export async function clientSendMessage(req: AuthRequest, res: Response): Promis
       body: content.slice(0, 100),
       url: `/app/messagerie?conversation=${request._id}`,
       requestId: request._id.toString(),
-    }).catch((err) => {
-      logMessageActionError(
-        'clientSendMessage: Failed to send push notification',
-        request._id.toString(),
-        prestataire._id.toString(),
-        err
-      );
-    });
+    }).catch(() => {});
+    sendExpoNotification(prestataire._id, {
+      title: `💬 ${clientName}`,
+      body: content.slice(0, 100),
+      data: { requestId: request._id.toString(), screen: 'requests' },
+    }).catch(() => {});
   }
 
   res.json({ ok: true, messages: request.messages });

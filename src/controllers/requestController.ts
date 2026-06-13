@@ -363,6 +363,14 @@ export async function providerPropose(req: AuthRequest, res: Response): Promise<
       logEmailError('providerPropose: Failed to send proposal email', request._id.toString(), req.user!._id.toString(), undefined, err);
     });
 
+    if (request.clientId) {
+      sendExpoNotification(request.clientId, {
+        title: '📅 Nouvelle date proposée',
+        body: `${req.user!.prenom} propose un nouveau créneau`,
+        data: { requestId: request._id.toString(), screen: 'demandes' },
+      }).catch(() => {});
+    }
+
     res.json({ ok: true, status: request.status, proposals: request.proposals });
   } catch (error) {
     logMessageActionError('providerPropose: Failed to propose', request._id.toString(), req.user!._id.toString(), error);
@@ -407,6 +415,13 @@ export async function providerCancel(req: AuthRequest, res: Response): Promise<v
   }
   request.status = 'cancelled';
   await request.save();
+  if (request.clientId) {
+    sendExpoNotification(request.clientId, {
+      title: '❌ Prestation annulée',
+      body: `${req.user!.prenom} a annulé la prestation planifiée`,
+      data: { requestId: request._id.toString(), screen: 'demandes' },
+    }).catch(() => {});
+  }
   res.json({ ok: true });
 }
 
@@ -425,6 +440,11 @@ export async function clientAcceptProposal(req: AuthRequest, res: Response): Pro
   if (lastProposal) request.desiredAt = lastProposal.date;
   request.status = 'scheduled';
   await request.save();
+  sendExpoNotification(request.prestataireId, {
+    title: '✅ Date acceptée',
+    body: `Le client a accepté votre proposition de créneau`,
+    data: { requestId: request._id.toString(), screen: 'demandes' },
+  }).catch(() => {});
   res.json({ ok: true, status: request.status, desiredAt: request.desiredAt });
 }
 
