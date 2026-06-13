@@ -5,6 +5,7 @@ import { User } from '../models/User';
 import { AuthRequest } from '../types';
 import { sendMessageToClientEmail, sendMessageToProviderEmail } from '../services/emailService';
 import { sendPushToUser } from '../services/pushService';
+import { sendExpoNotification } from '../services/expoService';
 import { validateMessageContent, validateMessageIds, validateToken, validateEmoji } from '../utils/validation';
 import { logEmailError, logMessageActionError } from '../utils/logger';
 
@@ -60,14 +61,12 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
       body: content.trim().slice(0, 100),
       url: `/app/messagerie?conversation=${request._id}`,
       requestId: request._id.toString(),
-    }).catch((err) => {
-      logMessageActionError(
-        'sendMessage: Failed to send push notification',
-        request._id.toString(),
-        req.user!._id.toString(),
-        err
-      );
-    });
+    }).catch(() => {});
+    sendExpoNotification(clientUser._id, {
+      title: `💬 ${fromName}`,
+      body: content.trim().slice(0, 100),
+      data: { requestId: request._id.toString(), screen: 'requests' },
+    }).catch(() => {});
   }
 
   res.json({ ok: true, messages: request.messages });
@@ -134,14 +133,12 @@ export async function replyByToken(req: Request, res: Response): Promise<void> {
       body: content.slice(0, 100),
       url: `/app/messagerie?conversation=${request._id}`,
       requestId: request._id.toString(),
-    }).catch((err) => {
-      logMessageActionError(
-        'replyByToken: Failed to send push notification',
-        request._id.toString(),
-        prestataire._id.toString(),
-        err
-      );
-    });
+    }).catch(() => {});
+    sendExpoNotification(prestataire._id, {
+      title: `💬 ${clientName}`,
+      body: content.slice(0, 100),
+      data: { requestId: request._id.toString(), screen: 'requests' },
+    }).catch(() => {});
   }
 
   res.json({ ok: true, newToken });

@@ -20,6 +20,7 @@ import {
   validateLabelName,
 } from '../utils/validation';
 import { logEmailError, logMessageActionError } from '../utils/logger';
+import { sendExpoNotification } from '../services/expoService';
 
 export async function createRequest(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>;
@@ -198,6 +199,12 @@ export async function confirmRequest(req: Request, res: Response): Promise<void>
     request.lastProviderNotifiedAt = new Date();
     await request.save();
 
+    sendExpoNotification(prestataire._id, {
+      title: '🌿 Nouvelle demande',
+      body: `${request.requesterPrenom ?? request.requesterEmail} a une nouvelle demande pour vous`,
+      data: { requestId: request._id.toString(), screen: 'demandes' },
+    }).catch(() => {});
+
     res.json({ ok: true, status: request.status });
   } catch (error) {
     logMessageActionError('confirmRequest: Failed to confirm request', request._id.toString(), undefined, error);
@@ -300,6 +307,13 @@ export async function providerAccept(req: AuthRequest, res: Response): Promise<v
   request.status = 'scheduled';
   await request.save();
   await sendProviderAcceptedEmail(request, req.user!);
+  if (request.clientId) {
+    sendExpoNotification(request.clientId, {
+      title: '✅ Demande acceptée',
+      body: `${req.user!.prenom} a accepté votre demande`,
+      data: { requestId: request._id.toString(), screen: 'demandes' },
+    }).catch(() => {});
+  }
   res.json({ ok: true, status: request.status });
 }
 
@@ -371,6 +385,13 @@ export async function providerRefuse(req: AuthRequest, res: Response): Promise<v
   request.status = 'refused';
   await request.save();
   await sendProviderRefusedEmail(request, req.user!, message);
+  if (request.clientId) {
+    sendExpoNotification(request.clientId, {
+      title: '❌ Demande refusée',
+      body: `${req.user!.prenom} n'est pas disponible pour cette demande`,
+      data: { requestId: request._id.toString(), screen: 'demandes' },
+    }).catch(() => {});
+  }
   res.json({ ok: true, status: request.status });
 }
 

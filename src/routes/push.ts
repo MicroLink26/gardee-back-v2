@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { isConnected } from '../middlewares/auth';
 import { PushSubscription } from '../models/PushSubscription';
+import { ExpoToken } from '../models/ExpoToken';
 import { AuthRequest } from '../types';
 import { logMessageActionError } from '../utils/logger';
 
@@ -42,6 +43,37 @@ router.delete('/subscribe', isConnected, async (req: AuthRequest, res: Response)
   } catch (error) {
     logMessageActionError('push.delete: Failed to unsubscribe from push notifications', undefined, req.user!._id.toString(), error);
     res.status(500).json({ error: 'Erreur lors de la désinscription' });
+  }
+});
+
+// Expo Push Token (mobile)
+router.post('/expo-token', isConnected, async (req: AuthRequest, res: Response) => {
+  try {
+    const { token } = req.body as { token?: string };
+    if (!token || !token.startsWith('ExponentPushToken[')) {
+      res.status(400).json({ error: 'Token Expo invalide' });
+      return;
+    }
+    await ExpoToken.findOneAndUpdate(
+      { user: req.user!._id, token },
+      { user: req.user!._id, token },
+      { upsert: true }
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    logMessageActionError('push.expo-token: Failed to save token', undefined, req.user!._id.toString(), error);
+    res.status(500).json({ error: 'Erreur lors de l\'enregistrement du token' });
+  }
+});
+
+router.delete('/expo-token', isConnected, async (req: AuthRequest, res: Response) => {
+  try {
+    const { token } = req.body as { token?: string };
+    if (token) await ExpoToken.deleteOne({ user: req.user!._id, token });
+    res.json({ ok: true });
+  } catch (error) {
+    logMessageActionError('push.expo-token.delete: Failed to delete token', undefined, req.user!._id.toString(), error);
+    res.status(500).json({ error: 'Erreur lors de la suppression du token' });
   }
 });
 
