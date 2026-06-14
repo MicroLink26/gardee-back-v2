@@ -12,9 +12,14 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Appel cron/daily
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: ${{ secrets.API_URL }}
         run: |
-          RESPONSE=$(curl -s -w "\nHTTP %{http_code}" \
-            "${{ secrets.API_URL }}/cron/daily?token=${{ secrets.CRON_SECRET }}")
+          # URL-encode le secret pour éviter que % soit interprété comme
+          # début d'un séquence de percent-encoding incomplète par curl/Express
+          ENCODED=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['CRON_SECRET'], safe=''))")
+          RESPONSE=$(curl -s -w "\nHTTP %{http_code}" "${API_URL}/cron/daily?token=${ENCODED}")
           echo "$RESPONSE"
           HTTP_CODE=$(echo "$RESPONSE" | tail -1 | grep -oE '[0-9]+')
           if [ "$HTTP_CODE" != "200" ]; then

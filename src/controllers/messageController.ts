@@ -824,3 +824,26 @@ export async function getForwardTargets(req: AuthRequest, res: Response): Promis
 
   res.json({ targets });
 }
+
+// Nombre total de messages non lus pour l'utilisateur connecté (toutes demandes)
+export async function getUnreadCount(req: AuthRequest, res: Response): Promise<void> {
+  const userEmail = req.user!.email;
+  const isProvider = !!(req.prestataire || req.user!.role === 'staff' || req.user!.role === 'admin');
+
+  const filter = isProvider
+    ? { prestataireId: req.user!._id, 'messages.0': { $exists: true } }
+    : { $or: [{ clientId: req.user!._id }, { requesterEmail: userEmail }], 'messages.0': { $exists: true } };
+
+  const requests = await ServiceRequest.find(filter).select('messages');
+
+  let count = 0;
+  for (const r of requests) {
+    for (const msg of r.messages) {
+      if (msg.isDeleted) continue;
+      const fromOther = isProvider ? msg.fromRole === 'client' : msg.fromRole === 'provider';
+      if (fromOther && !msg.readBy?.includes(userEmail)) count++;
+    }
+  }
+
+  res.json({ count });
+}

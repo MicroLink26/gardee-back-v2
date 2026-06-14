@@ -49,6 +49,7 @@ router.get('/messages/search', getThreadLimiter, msg.searchMessagesByToken);    
 router.post('/messages/reply', tokenMessageLimiter, msg.replyByToken);                               // public — token client
 router.post('/messages/read-by-token', markReadLimiter, msg.markMessagesAsReadByToken);          // public — token client mark read
 router.post('/messages/react', reactionLimiter, msg.addReactionByToken);                         // public — token client react
+router.get('/messages/unread-count', isConnected, msg.getUnreadCount);           // tous rôles — badge non lus
 router.get('/messages/client-threads', isConnected, msg.listClientThreads);     // client connecté — ses fils
 router.get('/messages/threads', isConnected, isPrestataire, msg.listThreads);   // prestataire — liste des fils
 router.get('/:id/messages', isConnected, isPrestataire, msg.getMessages);     // prestataire — fil d'une demande
