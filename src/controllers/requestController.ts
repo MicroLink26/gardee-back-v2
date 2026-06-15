@@ -490,6 +490,36 @@ export async function clientRefuseProposalByToken(req: Request, res: Response): 
   res.json({ ok: true });
 }
 
+export async function clientRefuseProposal(req: AuthRequest, res: Response): Promise<void> {
+  const request = await ServiceRequest.findOne({
+    _id: req.params.id,
+    status: 'provider_proposed',
+    requesterEmail: req.user!.email,
+  });
+  if (!request) {
+    res.status(404).json({ error: 'Demande introuvable' });
+    return;
+  }
+
+  const lastProposal = request.proposals.at(-1);
+  request.status = 'sent_to_provider';
+  request.proposalToken = undefined;
+  await request.save();
+
+  const prestataire = await User.findById(request.prestataireId);
+  if (prestataire && lastProposal) {
+    await sendClientRefusedProposalEmail(request, prestataire, lastProposal.date).catch((err) => {
+      logEmailError('clientRefuseProposal: Failed to send email', request._id.toString(), req.user!._id.toString(), prestataire.email, err);
+    });
+    sendExpoNotification(request.prestataireId, {
+      title: '❌ Date refusée',
+      body: `${req.user!.prenom} a refusé votre proposition de créneau`,
+      data: { requestId: request._id.toString(), screen: 'demandes' },
+    }).catch(() => {});
+  }
+  res.json({ ok: true, status: request.status });
+}
+
 export async function markComplete(req: AuthRequest, res: Response): Promise<void> {
   const request = await ServiceRequest.findOne({
     _id: req.params.id,

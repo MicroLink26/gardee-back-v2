@@ -24,6 +24,7 @@ router.post('/resend', requestTokenLimiter, req.resendConfirmation);
 
 // Client actions (token-based or authenticated)
 router.post('/:id/client/accept-proposal', isConnected, clientActionLimiter, req.clientAcceptProposal);
+router.post('/:id/client/refuse-proposal', isConnected, clientActionLimiter, req.clientRefuseProposal);
 router.get('/proposal/accept', requestTokenLimiter, req.clientAcceptProposalByToken);
 router.get('/proposal/refuse', requestTokenLimiter, req.clientRefuseProposalByToken);
 
