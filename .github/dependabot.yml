@@ -10,6 +10,14 @@ updates:
     open-pull-requests-limit: 5
     labels: [dependencies]
     ignore:
-      # Ne pas mettre à jour mongoose 8→9 sans migration volontaire
+      # Mises à jour majeures nécessitant une migration dédiée
       - dependency-name: mongoose
+        update-types: [version-update:semver-major]
+      - dependency-name: express
+        update-types: [version-update:semver-major]
+      - dependency-name: nodemailer
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: dotenv
         update-types: [version-update:semver-major]
