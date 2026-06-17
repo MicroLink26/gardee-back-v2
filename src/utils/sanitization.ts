@@ -1,15 +1,17 @@
+/**
+ * Encode HTML special characters to prevent XSS attacks.
+ * Simple implementation that escapes: & < > " '
+ */
 export function sanitizeText(text: string | undefined | null): string | undefined {
   if (!text) return undefined;
-  const trimmed = text.trim();
-  // Simple HTML entity encoding to prevent XSS
-  return trimmed
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
-}
-
-export function sanitizeHtmlText(text: string | undefined | null): string | undefined {
-  return sanitizeText(text);
+  return text.trim().replace(/[&<>"']/g, (char) => {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+    };
+    return map[char] || char;
+  });
 }
