@@ -1,10 +1,10 @@
-import xss from 'xss';
+import { filterXSS } from 'xss';
 
 const xssOptions = { whiteList: {}, stripIgnoredTag: true };
 
 export function sanitizeText(text: string | undefined | null): string | undefined {
   if (!text) return undefined;
-  return xss(text.trim(), xssOptions);
+  return filterXSS(text.trim(), xssOptions);
 }
 
 export function sanitizeHtmlText(text: string | undefined | null): string | undefined {
