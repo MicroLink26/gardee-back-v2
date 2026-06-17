@@ -3,7 +3,7 @@ import xss from 'xss';
 const xssOptions = { whiteList: {}, stripIgnoredTag: true };
 
 export function sanitizeText(text: string | undefined | null): string | undefined {
-  if (!text) return text === '' ? undefined : text;
+  if (!text) return undefined;
   return xss(text.trim(), xssOptions);
 }
 
