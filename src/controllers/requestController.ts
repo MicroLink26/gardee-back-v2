@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
+import { sanitizeText } from '../utils/sanitization';
 import {
   sendRequestConfirmationEmail,
   sendRequestToProvider,
@@ -134,17 +135,17 @@ export async function createRequest(req: Request, res: Response): Promise<void> 
     const request = await ServiceRequest.create({
       prestataireId,
       requesterEmail,
-      requesterNom: body.requesterNom,
-      requesterPrenom: body.requesterPrenom,
+      requesterNom: sanitizeText(body.requesterNom),
+      requesterPrenom: sanitizeText(body.requesterPrenom),
       requesterTelephone: body.requesterTelephone,
       prestations: (body.prestations ?? []) as string[],
       estimatedHours: body.estimatedHours,
       recurring: typeof body.recurring === 'boolean' ? body.recurring : false,
-      description: body.description,
-      subject: body.subject,
-      address: body.address,
+      description: sanitizeText(body.description),
+      subject: sanitizeText(body.subject),
+      address: sanitizeText(body.address),
       codePostal: body.codePostal,
-      ville: body.ville,
+      ville: sanitizeText(body.ville),
       desiredAt: body.desiredAt,
       status: 'email_pending',
       verifyToken: token,
