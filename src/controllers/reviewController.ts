@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { Prestataire } from '../models/Prestataire';
 import { validateToken, validateTextField } from '../utils/validation';
+import { sanitizeText } from '../utils/sanitization';
 import { logMessageActionError } from '../utils/logger';
 
 export async function validateRatingToken(req: Request, res: Response): Promise<void> {
@@ -83,7 +84,7 @@ export async function submitReview(req: Request, res: Response): Promise<void> {
     const average = values.reduce((a, b) => a + b, 0) / values.length;
 
     request.ratingDetails = ratings;
-    request.ratingComment = comment ? (comment as string).trim() : undefined;
+    request.ratingComment = sanitizeText(comment as string | undefined);
     request.recommend = recommend;
     request.ratingGivenAt = new Date();
     request.ratingToken = undefined;
