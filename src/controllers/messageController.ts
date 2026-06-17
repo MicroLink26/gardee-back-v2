@@ -701,7 +701,7 @@ export async function editMessage(req: AuthRequest, res: Response): Promise<void
     editedBy: req.user!.email,
   });
 
-  message.content = sanitizeText(content);
+  message.content = sanitizeText(content) || content;
   message.editedAt = new Date();
 
   await request.save();
