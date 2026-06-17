@@ -99,9 +99,9 @@ export async function sendWelcomeClientEmail(user: IUser): Promise<void> {
     user.email,
     'Bienvenue sur Gardee !',
     layout(`
-      <span class="badge">Compte créé</span>
+      <span class="badge">Vérification réussie</span>
       <h2>Bonjour ${user.prenom} 🌿</h2>
-      <p>Votre compte Gardee a bien été créé. Vous pouvez maintenant rechercher les meilleurs jardiniers près de chez vous et suivre vos demandes depuis votre espace personnel.</p>
+      <p>Votre email a été vérifié avec succès. Vous pouvez maintenant accéder à votre compte et rechercher les meilleurs jardiniers près de chez vous.</p>
       ${btn('Mes réservations', link)}
       <div class="divider"></div>
       <p style="font-size:13px;color:#9ca3af">L'équipe Gardee</p>
