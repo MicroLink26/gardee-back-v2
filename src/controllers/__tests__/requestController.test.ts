@@ -8,6 +8,7 @@ import {
 } from '../requestController';
 import { ServiceRequest } from '../../models/ServiceRequest';
 import { User } from '../../models/User';
+import { Prestataire } from '../../models/Prestataire';
 import { AuthRequest } from '../../types';
 
 jest.mock('../../models/ServiceRequest', () => ({
@@ -23,6 +24,12 @@ jest.mock('../../models/User', () => ({
   User: {
     findOne: jest.fn(),
     findById: jest.fn(),
+  },
+}));
+
+jest.mock('../../models/Prestataire', () => ({
+  Prestataire: {
+    findOne: jest.fn(),
   },
 }));
 
@@ -42,6 +49,7 @@ describe('requestController', () => {
   const mockSRCountDocuments = ServiceRequest.countDocuments as jest.Mock;
   const mockUserFindOne = User.findOne as jest.Mock;
   const mockUserFindById = User.findById as jest.Mock;
+  const mockPrestFindOne = Prestataire.findOne as jest.Mock;
 
   let res: Partial<Response>;
   let json: jest.Mock;
@@ -74,6 +82,13 @@ describe('requestController', () => {
     ...overrides,
   }) as any;
 
+  const makePrestataire = (overrides = {}) => ({
+    _id: 'prest-doc-id',
+    userId: 'prest-id',
+    is_validated: true,
+    ...overrides,
+  }) as any;
+
   // ── createRequest ─────────────────────────────────────────────────
 
   describe('createRequest', () => {
@@ -86,9 +101,9 @@ describe('requestController', () => {
     });
 
     it('returns 404 when prestataire not found', async () => {
-      mockUserFindOne.mockResolvedValue(null);
+      mockPrestFindOne.mockResolvedValue(null);
       await createRequest(
-        { body: { prestataireId: 'pid', requesterEmail: 'a@b.com' } } as Request,
+        { body: { prestataireId: '507f1f77bcf86cd799439011', requesterEmail: 'a@b.com' } } as Request,
         res as Response
       );
       expect(status).toHaveBeenCalledWith(404);
@@ -96,11 +111,12 @@ describe('requestController', () => {
 
     it('creates the request and sends confirmation email', async () => {
       const { sendRequestConfirmationEmail } = jest.requireMock('../../services/emailService');
-      mockUserFindOne.mockResolvedValue(makeUser());
+      mockPrestFindOne.mockResolvedValue(makePrestataire());
+      mockUserFindById.mockResolvedValue(makeUser());
       mockSRCreate.mockResolvedValue({ _id: 'new-id' });
 
       await createRequest(
-        { body: { prestataireId: 'pid', requesterEmail: 'Client@B.com', prestations: ['Tonte'] } } as Request,
+        { body: { prestataireId: '507f1f77bcf86cd799439011', requesterEmail: 'Client@B.com', prestations: ['Tonte'] } } as Request,
         res as Response
       );
 
@@ -114,11 +130,12 @@ describe('requestController', () => {
     });
 
     it('defaults prestations to [] when not provided', async () => {
-      mockUserFindOne.mockResolvedValue(makeUser());
+      mockPrestFindOne.mockResolvedValue(makePrestataire());
+      mockUserFindById.mockResolvedValue(makeUser());
       mockSRCreate.mockResolvedValue({ _id: 'new-id' });
 
       await createRequest(
-        { body: { prestataireId: 'pid', requesterEmail: 'client@b.com' } } as Request,
+        { body: { prestataireId: '507f1f77bcf86cd799439011', requesterEmail: 'client@b.com' } } as Request,
         res as Response
       );
 

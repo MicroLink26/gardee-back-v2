@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
+import { Types } from 'mongoose';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
@@ -121,6 +122,11 @@ export async function createRequest(req: Request, res: Response): Promise<void> 
       res.status(400).json({ error: prestValidation.error });
       return;
     }
+  }
+
+  if (!Types.ObjectId.isValid(prestataireId)) {
+    res.status(404).json({ error: 'Prestataire introuvable' });
+    return;
   }
 
   const prestataireDoc = await Prestataire.findOne({ userId: prestataireId, is_validated: true });
