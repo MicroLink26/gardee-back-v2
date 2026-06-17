@@ -29,8 +29,7 @@
     "morgan": "^1.10.0",
     "nanoid": "^5.1.6",
     "nodemailer": "^9.0.0",
-    "web-push": "^3.6.7",
-    "xss": "^1.0.15"
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
