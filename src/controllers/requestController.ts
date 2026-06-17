@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { User } from '../models/User';
+import { Prestataire } from '../models/Prestataire';
 import { AuthRequest } from '../types';
 import { sanitizeText } from '../utils/sanitization';
 import {
@@ -122,7 +123,13 @@ export async function createRequest(req: Request, res: Response): Promise<void> 
     }
   }
 
-  const prestataire = await User.findOne({ _id: prestataireId, role: 'prestataire', is_validated: true });
+  const prestataireDoc = await Prestataire.findOne({ userId: prestataireId, is_validated: true });
+  if (!prestataireDoc) {
+    res.status(404).json({ error: 'Prestataire introuvable' });
+    return;
+  }
+
+  const prestataire = await User.findById(prestataireId);
   if (!prestataire) {
     res.status(404).json({ error: 'Prestataire introuvable' });
     return;
