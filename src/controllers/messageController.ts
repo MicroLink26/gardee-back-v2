@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
+import xss from 'xss';
 import { ServiceRequest } from '../models/ServiceRequest';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
@@ -8,6 +9,8 @@ import { sendPushToUser } from '../services/pushService';
 import { sendExpoNotification } from '../services/expoService';
 import { validateMessageContent, validateMessageIds, validateToken, validateEmoji } from '../utils/validation';
 import { logEmailError, logMessageActionError } from '../utils/logger';
+
+const xssOptions = { whiteList: {}, stripIgnoredTag: true };
 
 // Prestataire envoie un message au client (auth requise)
 export async function sendMessage(req: AuthRequest, res: Response): Promise<void> {
@@ -33,11 +36,12 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
   request.messageTokenExpiresAt = new Date(Date.now() + 7 * 86400 * 1000);
 
   const fromName = `${req.user!.prenom} ${req.user!.nom}`;
+  const sanitizedContent = xss(content.trim(), xssOptions);
   request.messages.push({
     fromRole: 'provider',
     fromEmail: req.user!.email,
     fromName,
-    content: content.trim(),
+    content: sanitizedContent,
     createdAt: new Date(),
   } as Parameters<typeof request.messages.push>[0]);
 
@@ -102,11 +106,12 @@ export async function replyByToken(req: Request, res: Response): Promise<void> {
     ? `${request.requesterPrenom} ${request.requesterNom ?? ''}`.trim()
     : request.requesterEmail;
 
+  const sanitizedContent = xss(content, xssOptions);
   request.messages.push({
     fromRole: 'client',
     fromEmail: request.requesterEmail,
     fromName: clientName,
-    content,
+    content: sanitizedContent,
     createdAt: new Date(),
   } as Parameters<typeof request.messages.push>[0]);
 
@@ -698,7 +703,7 @@ export async function editMessage(req: AuthRequest, res: Response): Promise<void
     editedBy: req.user!.email,
   });
 
-  message.content = content;
+  message.content = xss(content, xssOptions);
   message.editedAt = new Date();
 
   await request.save();
@@ -786,6 +791,7 @@ export async function forwardMessage(req: AuthRequest, res: Response): Promise<v
 
   // Créer une copie du message avec note de forwarding
   const forwardedContent = `[Transféré depuis une autre conversation]\n\n${sourceMessage.content}\n\n— ${sourceMessage.fromName}`;
+  const sanitizedForwardedContent = xss(forwardedContent, xssOptions);
 
   // Déterminer le rôle based on qui est propriétaire de la demande cible
   const isTargetOwnerProvider = targetRequest.prestataireId.toString() === req.user!._id.toString();
@@ -794,7 +800,7 @@ export async function forwardMessage(req: AuthRequest, res: Response): Promise<v
     fromRole: isTargetOwnerProvider ? 'provider' : 'client',
     fromEmail: req.user!.email,
     fromName: req.user!.prenom && req.user!.nom ? `${req.user!.prenom} ${req.user!.nom}` : req.user!.email,
-    content: forwardedContent,
+    content: sanitizedForwardedContent,
     createdAt: new Date(),
   } as Parameters<typeof targetRequest.messages.push>[0]);
 
