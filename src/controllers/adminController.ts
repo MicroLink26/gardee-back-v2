@@ -79,20 +79,27 @@ export async function listPendingPrestataires(req: AuthRequest, res: Response): 
       prestFilter.$or = [{ ville: regex }, { prestations: regex }];
     }
 
-    // Get all non-validated prestataires (no pagination on fetch, filter client-side)
-    const allPrests = await Prestataire.find(prestFilter)
+    // Get paginated prestataires from DB
+    const prests = await Prestataire.find(prestFilter)
       .populate('userId', '-passwordHash')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(pageSize));
 
     // Filter out rejected/banned users
-    const filteredPrests = allPrests.filter(p => {
+    const paginatedPrests = prests.filter(p => {
       const user = p.userId as unknown as { rejectedTemporarily?: boolean; bannedPermanently?: boolean };
       return !(user.rejectedTemporarily || user.bannedPermanently);
     });
 
-    // Apply pagination
-    const paginatedPrests = filteredPrests.slice(skip, skip + parseInt(pageSize));
-    const total = filteredPrests.length;
+    // Get total count excluding rejected
+    const allPrests = await Prestataire.find(prestFilter)
+      .populate('userId', '-passwordHash')
+      .lean();
+    const total = allPrests.filter(p => {
+      const user = p.userId as unknown as { rejectedTemporarily?: boolean; bannedPermanently?: boolean };
+      return !(user.rejectedTemporarily || user.bannedPermanently);
+    }).length;
 
     // Return items in the same format as before (user object with prestataire data embedded)
     const items = paginatedPrests.map(p => {
