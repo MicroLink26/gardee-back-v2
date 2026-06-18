@@ -114,12 +114,9 @@ describe('adminController', () => {
       };
       mockPrestFind.mockReturnValue({
         populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockReturnValue({
-            skip: jest.fn().mockReturnValue({ limit: jest.fn().mockResolvedValue([prest]) }),
-          }),
+          sort: jest.fn().mockResolvedValue([prest]),
         }),
       });
-      mockPrestCount.mockResolvedValue(1);
 
       await listPendingPrestataires(authReq(), res as Response);
 
@@ -135,12 +132,9 @@ describe('adminController', () => {
       };
       mockPrestFind.mockReturnValue({
         populate: jest.fn().mockReturnValue({
-          sort: jest.fn().mockReturnValue({
-            skip: jest.fn().mockReturnValue({ limit: jest.fn().mockResolvedValue([prest]) }),
-          }),
+          sort: jest.fn().mockResolvedValue([prest]),
         }),
       });
-      mockPrestCount.mockResolvedValue(1);
 
       await listPendingPrestataires(authReq(), res as Response);
 

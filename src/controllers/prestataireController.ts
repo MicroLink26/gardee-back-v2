@@ -363,7 +363,7 @@ export async function deleteMyPrestataire(req: AuthRequest, res: Response): Prom
 }
 
 export async function getAllPrestataireIds(req: Request, res: Response): Promise<void> {
-  const prests = await Prestataire.find({ is_validated: true })
+  const prests = await Prestataire.find()
     .populate<{ userId: { _id: string } }>('userId', '_id')
     .select('userId');
   const ids = prests.map(p => (p.userId as unknown as { _id: string })._id.toString());
