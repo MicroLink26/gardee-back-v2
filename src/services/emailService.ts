@@ -398,7 +398,7 @@ export async function sendPrestataireRejectedPermanentlyEmail(user: IUser, reaso
 }
 
 export async function sendEmailVerificationCode(user: IUser, code: string): Promise<void> {
-  const verificationUrl = `${APP_URL()}/app/login`;
+  const verificationUrl = `${APP_URL()}/app/verify-email?userId=${user._id.toString()}&code=${code}`;
   await sendMail(
     user.email,
     `${code} — Votre code de vérification Gardee`,
@@ -410,7 +410,7 @@ export async function sendEmailVerificationCode(user: IUser, code: string): Prom
         <div style="display:inline-block;background:#1a2410;color:#a8c47a;font-size:2.2rem;font-weight:900;letter-spacing:0.3em;padding:1rem 2rem;border-radius:12px">${code}</div>
       </div>
       <p style="text-align:center;font-size:13px;color:#9ca3af">Ce code est valable <strong>10 minutes</strong>.</p>
-      ${btn('Accéder à votre compte', verificationUrl)}
+      ${btn('Vérifier mon email', verificationUrl)}
       <div class="divider"></div>
       <p style="font-size:13px;color:#9ca3af">Si vous n'avez pas créé de compte sur Gardee, ignorez cet email.</p>
     `, `Votre code Gardee : ${code}`)
