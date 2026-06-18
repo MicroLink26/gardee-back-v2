@@ -398,7 +398,7 @@ export async function sendPrestataireRejectedPermanentlyEmail(user: IUser, reaso
 }
 
 export async function sendEmailVerificationCode(user: IUser, code: string): Promise<void> {
-  const verificationUrl = `${APP_URL()}/app/verify-email?userId=${user._id.toString()}&code=${code}`;
+  const verificationUrl = `${APP_URL()}/app/verify-email#userId=${user._id.toString()}&code=${code}`;
   await sendMail(
     user.email,
     `${code} — Votre code de vérification Gardee`,
