@@ -92,10 +92,10 @@ export async function listPendingPrestataires(req: AuthRequest, res: Response): 
       return !(user.rejectedTemporarily || user.bannedPermanently);
     });
 
-    // Get total count excluding rejected
+    // Get total count excluding rejected users
+    const allPrestsCount = await Prestataire.countDocuments(prestFilter);
     const allPrests = await Prestataire.find(prestFilter)
-      .populate('userId', '-passwordHash')
-      .lean();
+      .populate('userId', '-passwordHash');
     const total = allPrests.filter(p => {
       const user = p.userId as unknown as { rejectedTemporarily?: boolean; bannedPermanently?: boolean };
       return !(user.rejectedTemporarily || user.bannedPermanently);
