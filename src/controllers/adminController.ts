@@ -79,17 +79,23 @@ export async function listPendingPrestataires(req: AuthRequest, res: Response): 
       prestFilter.$or = [{ ville: regex }, { prestations: regex }];
     }
 
-    const [prests, total] = await Promise.all([
-      Prestataire.find(prestFilter)
-        .populate('userId', '-passwordHash')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(pageSize)),
-      Prestataire.countDocuments(prestFilter),
-    ]);
+    // Get all non-validated prestataires (no pagination on fetch, filter client-side)
+    const allPrests = await Prestataire.find(prestFilter)
+      .populate('userId', '-passwordHash')
+      .sort({ createdAt: -1 });
+
+    // Filter out rejected/banned users
+    const filteredPrests = allPrests.filter(p => {
+      const user = p.userId as unknown as { rejectedTemporarily?: boolean; bannedPermanently?: boolean };
+      return !(user.rejectedTemporarily || user.bannedPermanently);
+    });
+
+    // Apply pagination
+    const paginatedPrests = filteredPrests.slice(skip, skip + parseInt(pageSize));
+    const total = filteredPrests.length;
 
     // Return items in the same format as before (user object with prestataire data embedded)
-    const items = prests.map(p => {
+    const items = paginatedPrests.map(p => {
       const u = p.userId as unknown as { toObject?: () => Record<string, unknown> } & Record<string, unknown>;
       const userObj = typeof u.toObject === 'function' ? u.toObject() : u;
       return { ...userObj, isPrestataire: true, prestataire: p.toObject(), prestataireId: p._id };
@@ -151,17 +157,15 @@ export async function rejectPrestataire(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    prestataire.is_validated = false;
-    await prestataire.save();
-
     if (type === 'permanent') {
-      user.bannedPermanently = true;
-      user.rejectedTemporarily = false;
-      user.rejectionReason = reason;
-      user.rejectedAt = new Date();
-      await user.save();
+      // Delete user and prestataire completely
+      await Prestataire.deleteOne({ _id: prestataire._id });
+      await User.deleteOne({ _id: user._id });
       sendPrestataireRejectedPermanentlyEmail(user, reason ?? '').catch(() => {});
     } else {
+      // Temporary rejection: mark but keep account
+      prestataire.is_validated = false;
+      await prestataire.save();
       user.rejectedTemporarily = true;
       user.rejectionReason = reason;
       user.rejectedAt = new Date();
