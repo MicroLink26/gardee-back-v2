@@ -76,7 +76,7 @@ export async function registerPrestataire(req: Request, res: Response): Promise<
       telephone: (body.telephone as string).trim(),
       cgu: body.cgu ?? false,
       consentDataProcessing: body.consentDataProcessing ?? false,
-      is_validated: true,
+      is_validated: false,
       emailVerified: false,
       emailVerificationCode: verificationCode,
       emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
