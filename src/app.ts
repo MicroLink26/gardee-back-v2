@@ -20,6 +20,7 @@ import categoryRoutes from './routes/categories';
 import contactRoutes from './routes/contact';
 import cronRoutes from './routes/cron';
 import pushRoutes from './routes/push';
+import notificationRoutes from './routes/notifications';
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/cron', cronRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const BUILD_DATE = new Date().toISOString();
 app.get('/api/health', (_req, res) => res.json({ ok: true, version, buildDate: BUILD_DATE }));
