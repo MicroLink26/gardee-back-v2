@@ -24,6 +24,7 @@ import {
 } from '../utils/validation';
 import { logEmailError, logMessageActionError } from '../utils/logger';
 import { sendExpoNotification } from '../services/expoService';
+import * as notificationService from '../services/notificationService';
 
 export async function createRequest(req: Request, res: Response): Promise<void> {
   const body = req.body as Record<string, unknown>;
@@ -213,11 +214,14 @@ export async function confirmRequest(req: Request, res: Response): Promise<void>
     request.lastProviderNotifiedAt = new Date();
     await request.save();
 
+    const requesterName = request.requesterPrenom || request.requesterEmail;
     sendExpoNotification(prestataire._id, {
       title: '🌿 Nouvelle demande',
-      body: `${request.requesterPrenom ?? request.requesterEmail} a une nouvelle demande pour vous`,
+      body: `${requesterName} a une nouvelle demande pour vous`,
       data: { requestId: request._id.toString(), screen: 'demandes' },
     }).catch(() => {});
+
+    notificationService.notifyRequestConfirmed(prestataire._id, request._id, requesterName).catch(() => {});
 
     res.json({ ok: true, status: request.status });
   } catch (error) {
@@ -327,6 +331,7 @@ export async function providerAccept(req: AuthRequest, res: Response): Promise<v
       body: `${req.user!.prenom} a accepté votre demande`,
       data: { requestId: request._id.toString(), screen: 'demandes' },
     }).catch(() => {});
+    notificationService.notifyProviderAccepted(request.clientId, request._id, req.user!.prenom).catch(() => {});
   }
   res.json({ ok: true, status: request.status });
 }
@@ -378,11 +383,13 @@ export async function providerPropose(req: AuthRequest, res: Response): Promise<
     });
 
     if (request.clientId) {
+      const dateLabel = proposedDate.toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' });
       sendExpoNotification(request.clientId, {
         title: '📅 Nouvelle date proposée',
         body: `${req.user!.prenom} propose un nouveau créneau`,
         data: { requestId: request._id.toString(), screen: 'demandes' },
       }).catch(() => {});
+      notificationService.notifyProviderProposed(request.clientId, request._id, req.user!.prenom, dateLabel).catch(() => {});
     }
 
     res.json({ ok: true, status: request.status, proposals: request.proposals });
@@ -413,6 +420,7 @@ export async function providerRefuse(req: AuthRequest, res: Response): Promise<v
       body: `${req.user!.prenom} n'est pas disponible pour cette demande`,
       data: { requestId: request._id.toString(), screen: 'demandes' },
     }).catch(() => {});
+    notificationService.notifyProviderRefused(request.clientId, request._id, req.user!.prenom).catch(() => {});
   }
   res.json({ ok: true, status: request.status });
 }
@@ -459,6 +467,7 @@ export async function clientAcceptProposal(req: AuthRequest, res: Response): Pro
     body: `Le client a accepté votre proposition de créneau`,
     data: { requestId: request._id.toString(), screen: 'demandes' },
   }).catch(() => {});
+  notificationService.notifyClientAccepted(request.prestataireId, request._id).catch(() => {});
   res.json({ ok: true, status: request.status, desiredAt: request.desiredAt });
 }
 
@@ -478,6 +487,7 @@ export async function clientAcceptProposalByToken(req: Request, res: Response): 
   request.status = 'scheduled';
   request.proposalToken = undefined;
   await request.save();
+  notificationService.notifyClientAccepted(request.prestataireId, request._id).catch(() => {});
   res.json({ ok: true, desiredAt: request.desiredAt });
 }
 
@@ -500,6 +510,7 @@ export async function clientRefuseProposalByToken(req: Request, res: Response): 
   const prestataire = await User.findById(request.prestataireId);
   if (prestataire && lastProposal) {
     await sendClientRefusedProposalEmail(request, prestataire, lastProposal.date);
+    notificationService.notifyClientRefused(request.prestataireId, request._id).catch(() => {});
   }
   res.json({ ok: true });
 }
@@ -530,6 +541,7 @@ export async function clientRefuseProposal(req: AuthRequest, res: Response): Pro
       body: `${req.user!.prenom} a refusé votre proposition de créneau`,
       data: { requestId: request._id.toString(), screen: 'demandes' },
     }).catch(() => {});
+    notificationService.notifyClientRefused(request.prestataireId, request._id).catch(() => {});
   }
   res.json({ ok: true, status: request.status });
 }
@@ -546,6 +558,9 @@ export async function markComplete(req: AuthRequest, res: Response): Promise<voi
   }
   request.status = 'completed';
   await request.save();
+  if (request.clientId) {
+    notificationService.notifyRequestCompleted(request.clientId, request._id, req.user!.prenom).catch(() => {});
+  }
   res.json({ ok: true });
 }
 
