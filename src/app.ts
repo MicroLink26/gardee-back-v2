@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import http from 'http';
 import { version } from '../package.json';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,6 +10,7 @@ import fileUpload from 'express-fileupload';
 
 import { connectDB } from './config/db';
 import { errorHandler, notFound } from './middlewares/errorHandler';
+import { initializeSocket } from './services/socketService';
 
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
@@ -75,5 +77,10 @@ app.use(errorHandler);
 export default app;
 export async function startServer(port: number = parseInt(process.env.PORT ?? '3000', 10)) {
   await connectDB();
-  return app.listen(port, () => console.log(`Gardee API v2 running on port ${port}`));
+
+  // Create HTTP server for Socket.io support
+  const httpServer = http.createServer(app);
+  initializeSocket(httpServer);
+
+  return httpServer.listen(port, () => console.log(`Gardee API v2 running on port ${port} (with WebSocket support)`));
 }
