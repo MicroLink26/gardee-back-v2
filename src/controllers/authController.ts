@@ -125,7 +125,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
 
   sendWelcomeClientEmail(user).catch(() => {});
 
-  const accessToken = signAccessToken(user._id);
+  const accessToken = signAccessToken(user._id, user.role, user.email);
   const refreshToken = await createRefreshToken(user._id);
   res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
   res.json({ user: serializeUser(user, null), accessToken });
@@ -196,7 +196,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     await user.save();
 
     const prestataire = await Prestataire.findOne({ userId: user._id });
-    const accessToken = signAccessToken(user._id);
+    const accessToken = signAccessToken(user._id, user.role, user.email);
     const refreshToken = await createRefreshToken(user._id);
 
     res.cookie('refresh_token', refreshToken, COOKIE_OPTS);
@@ -226,7 +226,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const accessToken = signAccessToken(user._id);
+  const accessToken = signAccessToken(user._id, user.role, user.email);
   const newRefreshToken = await createRefreshToken(user._id);
 
   res.cookie('refresh_token', newRefreshToken, COOKIE_OPTS);

@@ -4,9 +4,12 @@ import { nanoid } from 'nanoid';
 import { Types } from 'mongoose';
 import { RefreshToken } from '../models/RefreshToken';
 
-export function signAccessToken(userId: Types.ObjectId): string {
+export function signAccessToken(userId: Types.ObjectId, role?: string, email?: string): string {
   const ttl = parseInt(process.env.ACCESS_TTL_MINUTES ?? '15', 10);
-  return jwt.sign({ sub: userId.toString() }, process.env.JWT_ACCESS_SECRET!, {
+  const payload: any = { sub: userId.toString() };
+  if (role) payload.role = role;
+  if (email) payload.email = email;
+  return jwt.sign(payload, process.env.JWT_ACCESS_SECRET!, {
     expiresIn: ttl * 60,
   });
 }
