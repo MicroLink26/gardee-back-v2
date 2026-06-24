@@ -32,7 +32,12 @@ export async function subscribeNewsletter(req: Request, res: Response): Promise<
       });
     }
 
-    await sendNewsletterWelcome(email);
+    try {
+      await sendNewsletterWelcome(email);
+    } catch (emailError) {
+      console.warn('Newsletter email send failed:', emailError);
+      // Continue even if email fails
+    }
     res.json({ ok: true, message: 'Abonnement réussi! Vérifiez votre email.' });
   } catch (error: any) {
     console.error('Newsletter subscription error:', error?.message || error);
