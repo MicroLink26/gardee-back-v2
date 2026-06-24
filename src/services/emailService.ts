@@ -432,7 +432,7 @@ export async function sendForgotPasswordEmail(to: string, token: string): Promis
   );
 }
 
-export async function sendNewsletterWelcome(email: string): Promise<void> {
+export async function sendNewsletterWelcome(email: string, unsubscribeUrl?: string): Promise<void> {
   await sendMail(
     email,
     'Bienvenue à la newsletter Gardee! 🌱',
@@ -444,10 +444,12 @@ export async function sendNewsletterWelcome(email: string): Promise<void> {
         <li style="margin:8px 0;">Les <strong>meilleurs avis</strong> de la semaine</li>
         <li style="margin:8px 0;">Des <strong>conseils d'entretien</strong> de jardin</li>
       </ul>
-      <p>Vous pouvez vous désabonner à tout moment depuis les emails que vous recevrez.</p>
       ${btn('Visiter Gardee', `${FRONT_URL()}/carte`)}
       <div class="divider"></div>
       <p style="font-size:13px;color:#9ca3af">Vous recevrez votre première newsletter le lundi prochain.</p>
+      ${unsubscribeUrl ? `<p style="font-size:12px;color:#9ca3af;margin-top:16px;">
+        <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Cliquez ici pour vous désabonner</a>
+      </p>` : ''}
     `, 'Newsletter Gardee — Bienvenue!')
   );
 }

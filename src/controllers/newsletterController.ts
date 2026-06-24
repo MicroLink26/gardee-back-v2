@@ -33,7 +33,8 @@ export async function subscribeNewsletter(req: Request, res: Response): Promise<
     }
 
     try {
-      await sendNewsletterWelcome(email);
+      const unsubscribeUrl = `${process.env.FRONT_URL ?? 'https://gardee.fr'}/api/newsletter/unsubscribe?token=${unsubscribeToken}`;
+      await sendNewsletterWelcome(email, unsubscribeUrl);
     } catch (emailError) {
       console.warn('Newsletter email send failed:', emailError);
       // Continue even if email fails
