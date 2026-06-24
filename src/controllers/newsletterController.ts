@@ -34,9 +34,9 @@ export async function subscribeNewsletter(req: Request, res: Response): Promise<
 
     await sendNewsletterWelcome(email);
     res.json({ ok: true, message: 'Abonnement réussi! Vérifiez votre email.' });
-  } catch (error) {
-    console.error('Newsletter subscription error:', error);
-    res.status(500).json({ error: 'Erreur lors de l\'abonnement' });
+  } catch (error: any) {
+    console.error('Newsletter subscription error:', error?.message || error);
+    res.status(500).json({ error: error?.message || 'Erreur lors de l\'abonnement' });
   }
 }
 
