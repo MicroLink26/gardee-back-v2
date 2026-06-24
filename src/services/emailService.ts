@@ -431,3 +431,46 @@ export async function sendForgotPasswordEmail(to: string, token: string): Promis
     `, 'Réinitialisez votre mot de passe Gardee.')
   );
 }
+
+export async function sendNewsletterWelcome(email: string): Promise<void> {
+  await sendMail(
+    email,
+    'Bienvenue à la newsletter Gardee! 🌱',
+    layout(`
+      <h2>Merci de vous être abonné!</h2>
+      <p>Bienvenue à la newsletter hebdomadaire Gardee. Chaque semaine, vous recevrez:</p>
+      <ul style="margin:16px 0;padding-left:20px;">
+        <li style="margin:8px 0;">Les <strong>top prestataires</strong> de votre région</li>
+        <li style="margin:8px 0;">Les <strong>meilleurs avis</strong> de la semaine</li>
+        <li style="margin:8px 0;">Des <strong>conseils d'entretien</strong> de jardin</li>
+      </ul>
+      <p>Vous pouvez vous désabonner à tout moment depuis les emails que vous recevrez.</p>
+      ${btn('Visiter Gardee', `${FRONT_URL()}/carte`)}
+      <div class="divider"></div>
+      <p style="font-size:13px;color:#9ca3af">Vous recevrez votre première newsletter le lundi prochain.</p>
+    `, 'Newsletter Gardee — Bienvenue!')
+  );
+}
+
+export async function sendNewsletterDigest(email: string, topPrestateurs: any[]): Promise<void> {
+  const prestatairesList = topPrestateurs
+    .slice(0, 5)
+    .map(p => `<li><strong>${p.prenom} ${p.nom}</strong> ${p.prestataire?.ville ? `- ${p.prestataire.ville}` : ''} ⭐ ${p.prestataire?.averageRating?.toFixed(1) || 'N/A'}</li>`)
+    .join('');
+
+  await sendMail(
+    email,
+    'Newsletter Gardee - Top prestataires cette semaine',
+    layout(`
+      <h2>Top prestataires cette semaine 🏆</h2>
+      <p>Découvrez les meilleurs jardiniers de votre région selon les avis clients:</p>
+      <ul style="margin:16px 0;padding-left:20px;list-style:none;padding:0;">
+        ${prestatairesList}
+      </ul>
+      <div class="divider"></div>
+      <h3 style="font-size:1rem;font-weight:700;color:#1a1a0e;margin:16px 0 8px;">Conseil de la semaine 🌱</h3>
+      <p style="font-size:14px;color:#374151;">C'est l'été! Arrosez vos plantes en fin d'après-midi pour limiter l'évaporation. Les arbustes auront plus de temps pour absorber l'eau avant les fortes chaleurs.</p>
+      ${btn('Voir tous les prestataires', `${FRONT_URL()}/carte`)}
+    `, 'Newsletter Gardee - Top de la semaine')
+  );
+}
