@@ -19,10 +19,8 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
       res.status(401).json({ error: 'Utilisateur introuvable' });
       return;
     }
-    // Use token role if user.role doesn't match (fallback for consistency)
-    if (payload.role && !user.role) {
-      user.role = payload.role as UserRole;
-    }
+    // Store token payload for role fallback
+    (req as any).tokenPayload = payload;
     req.user = user;
     req.prestataire = await Prestataire.findOne({ userId: user._id });
     next();
@@ -37,7 +35,8 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
 }
 
 export function isStaff(req: AuthRequest, res: Response, next: NextFunction): void {
-  if (req.user?.role !== 'staff' && req.user?.role !== 'admin') {
+  const userRole = req.user?.role || (req as any).tokenPayload?.role;
+  if (userRole !== 'staff' && userRole !== 'admin') {
     res.status(403).json({ error: 'Accès réservé au staff' });
     return;
   }
