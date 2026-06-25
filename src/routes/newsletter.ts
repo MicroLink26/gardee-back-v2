@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as newsletter from '../controllers/newsletterController';
 import * as newsletterAdmin from '../controllers/newsletterAdminController';
-import { isStaff } from '../middlewares/auth';
+import { isConnected, isStaff } from '../middlewares/auth';
 
 const router = Router();
 
@@ -10,8 +10,8 @@ router.post('/subscribe', newsletter.subscribeNewsletter);
 router.get('/unsubscribe', newsletter.unsubscribeNewsletter);
 
 // Admin endpoints
-router.get('/subscribers', isStaff, newsletterAdmin.getSubscribers);
-router.post('/send', isStaff, newsletterAdmin.sendNewsletter);
-router.get('/history', isStaff, newsletterAdmin.getHistory);
+router.get('/subscribers', isConnected, isStaff, newsletterAdmin.getSubscribers);
+router.post('/send', isConnected, isStaff, newsletterAdmin.sendNewsletter);
+router.get('/history', isConnected, isStaff, newsletterAdmin.getHistory);
 
 export default router;
