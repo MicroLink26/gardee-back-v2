@@ -13,11 +13,15 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
   }
   const token = header.slice(7);
   try {
-    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as { sub: string };
+    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as { sub: string; role?: string; email?: string };
     const user = await User.findById(payload.sub);
     if (!user) {
       res.status(401).json({ error: 'Utilisateur introuvable' });
       return;
+    }
+    // Use token role if user.role doesn't match (fallback for consistency)
+    if (payload.role && !user.role) {
+      user.role = payload.role;
     }
     req.user = user;
     req.prestataire = await Prestataire.findOne({ userId: user._id });
