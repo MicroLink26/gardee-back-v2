@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Prestataire } from '../models/Prestataire';
-import { AuthRequest } from '../types';
+import { AuthRequest, UserRole } from '../types';
 import { logMessageActionError } from '../utils/logger';
 
 export async function isConnected(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -21,7 +21,7 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
     }
     // Use token role if user.role doesn't match (fallback for consistency)
     if (payload.role && !user.role) {
-      user.role = payload.role;
+      user.role = payload.role as UserRole;
     }
     req.user = user;
     req.prestataire = await Prestataire.findOne({ userId: user._id });
