@@ -37,7 +37,9 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
 }
 
 export function isStaff(req: AuthRequest, res: Response, next: NextFunction): void {
-  if (req.user?.role !== 'staff' && req.user?.role !== 'admin') {
+  const hasAccess = req.user?.role === 'staff' || req.user?.role === 'admin' ||
+                   (req.user as any)?.is_staff || (req.user as any)?.is_superuser;
+  if (!hasAccess) {
     res.status(403).json({ error: 'Accès réservé au staff' });
     return;
   }
@@ -45,7 +47,8 @@ export function isStaff(req: AuthRequest, res: Response, next: NextFunction): vo
 }
 
 export function isAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
-  if (req.user?.role !== 'admin') {
+  const hasAccess = req.user?.role === 'admin' || (req.user as any)?.is_superuser;
+  if (!hasAccess) {
     res.status(403).json({ error: 'Accès réservé aux administrateurs' });
     return;
   }
