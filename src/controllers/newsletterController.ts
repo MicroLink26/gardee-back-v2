@@ -51,21 +51,21 @@ export async function unsubscribeNewsletter(req: Request, res: Response): Promis
     const { token } = req.query;
 
     if (!token) {
-      res.status(400).json({ error: 'Token manquant' });
+      res.redirect(`${process.env.FRONT_URL ?? 'https://gardee.fr'}/newsletter/unsubscribe?status=error&reason=missing-token`);
       return;
     }
 
     const newsletter = await Newsletter.findOne({ unsubscribeToken: token });
     if (!newsletter) {
-      res.status(404).json({ error: 'Abonnement introuvable' });
+      res.redirect(`${process.env.FRONT_URL ?? 'https://gardee.fr'}/newsletter/unsubscribe?status=error&reason=not-found`);
       return;
     }
 
     newsletter.subscribed = false;
     await newsletter.save();
-    res.json({ ok: true, message: 'Vous avez été désabonné.' });
+    res.redirect(`${process.env.FRONT_URL ?? 'https://gardee.fr'}/newsletter/unsubscribe?status=success`);
   } catch (error) {
     console.error('Newsletter unsubscribe error:', error);
-    res.status(500).json({ error: 'Erreur lors du désabonnement' });
+    res.redirect(`${process.env.FRONT_URL ?? 'https://gardee.fr'}/newsletter/unsubscribe?status=error&reason=internal`);
   }
 }

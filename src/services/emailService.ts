@@ -454,8 +454,9 @@ export async function sendNewsletterWelcome(email: string, unsubscribeUrl?: stri
   );
 }
 
-export async function sendNewsletterDigest(email: string, title: string, content: string, ctaText: string, ctaLink: string): Promise<void> {
+export async function sendNewsletterDigest(email: string, title: string, content: string, ctaText: string, ctaLink: string, unsubscribeUrl?: string): Promise<void> {
   const contentHtml = content.replace(/\n/g, '<br>');
+  const unsubscribeLink = unsubscribeUrl ? `<p style="font-size:12px;color:#9ca3af;margin-top:24px;"><a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Se désabonner de la newsletter</a></p>` : '';
 
   await sendMail(
     email,
@@ -465,6 +466,7 @@ export async function sendNewsletterDigest(email: string, title: string, content
       <p>${contentHtml}</p>
       <div class="divider"></div>
       ${btn(ctaText, ctaLink)}
+      ${unsubscribeLink}
     `, title)
   );
 }

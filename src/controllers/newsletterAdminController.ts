@@ -36,9 +36,11 @@ export async function sendNewsletter(req: Request, res: Response): Promise<void>
     }
 
     // Send emails
+    const frontUrl = process.env.FRONT_URL ?? 'https://gardee.fr';
     for (const sub of subscribers) {
       try {
-        await sendNewsletterDigest(sub.email, title, content, ctaText, ctaLink);
+        const unsubscribeUrl = `${frontUrl}/newsletter/unsubscribe?token=${sub.unsubscribeToken}`;
+        await sendNewsletterDigest(sub.email, title, content, ctaText, ctaLink, unsubscribeUrl);
       } catch (emailError) {
         console.error(`Failed to send email to ${sub.email}:`, emailError);
         // Continue with next email even if one fails
