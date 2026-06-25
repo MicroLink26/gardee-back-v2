@@ -20,6 +20,17 @@ export async function isConnected(req: AuthRequest, res: Response, next: NextFun
       return;
     }
     req.user = user;
+
+    // Compute role from legacy fields if not set
+    if (!user.role) {
+      const legacy = user as any;
+      if (legacy.is_superuser) {
+        user.role = 'admin' as any;
+      } else if (legacy.is_staff) {
+        user.role = 'staff' as any;
+      }
+    }
+
     // Override with token role if different (ensures consistency)
     if (payload.role) {
       user.role = payload.role as any;
