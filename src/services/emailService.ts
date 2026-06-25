@@ -454,25 +454,17 @@ export async function sendNewsletterWelcome(email: string, unsubscribeUrl?: stri
   );
 }
 
-export async function sendNewsletterDigest(email: string, topPrestateurs: any[]): Promise<void> {
-  const prestatairesList = topPrestateurs
-    .slice(0, 5)
-    .map(p => `<li><strong>${p.prenom} ${p.nom}</strong> ${p.prestataire?.ville ? `- ${p.prestataire.ville}` : ''} ⭐ ${p.prestataire?.averageRating?.toFixed(1) || 'N/A'}</li>`)
-    .join('');
+export async function sendNewsletterDigest(email: string, title: string, content: string, ctaText: string, ctaLink: string): Promise<void> {
+  const contentHtml = content.replace(/\n/g, '<br>');
 
   await sendMail(
     email,
-    'Newsletter Gardee - Top prestataires cette semaine',
+    title,
     layout(`
-      <h2>Top prestataires cette semaine 🏆</h2>
-      <p>Découvrez les meilleurs jardiniers de votre région selon les avis clients:</p>
-      <ul style="margin:16px 0;padding-left:20px;list-style:none;padding:0;">
-        ${prestatairesList}
-      </ul>
+      <h2>${title}</h2>
+      <p>${contentHtml}</p>
       <div class="divider"></div>
-      <h3 style="font-size:1rem;font-weight:700;color:#1a1a0e;margin:16px 0 8px;">Conseil de la semaine 🌱</h3>
-      <p style="font-size:14px;color:#374151;">C'est l'été! Arrosez vos plantes en fin d'après-midi pour limiter l'évaporation. Les arbustes auront plus de temps pour absorber l'eau avant les fortes chaleurs.</p>
-      ${btn('Voir tous les prestataires', `${FRONT_URL()}/carte`)}
-    `, 'Newsletter Gardee - Top de la semaine')
+      ${btn(ctaText, ctaLink)}
+    `, title)
   );
 }

@@ -38,7 +38,7 @@ export async function sendNewsletter(req: Request, res: Response): Promise<void>
     // Send emails
     for (const sub of subscribers) {
       try {
-        await sendNewsletterDigest(sub.email, []);
+        await sendNewsletterDigest(sub.email, title, content, ctaText, ctaLink);
       } catch (emailError) {
         console.error(`Failed to send email to ${sub.email}:`, emailError);
         // Continue with next email even if one fails

@@ -24,6 +24,7 @@ import cronRoutes from './routes/cron';
 import pushRoutes from './routes/push';
 import notificationRoutes from './routes/notifications';
 import newsletterRoutes from './routes/newsletter';
+import settingsRoutes from './routes/settings';
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/cron', cronRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/settings', settingsRoutes);
 
 const BUILD_DATE = new Date().toISOString();
 app.get('/api/health', (_req, res) => res.json({ ok: true, version, buildDate: BUILD_DATE }));
