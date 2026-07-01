@@ -152,7 +152,7 @@ export async function sendRequestToProvider(
       <p>Vous avez reçu une nouvelle demande de service de la part de <span class="highlight">${clientName}</span>.</p>
       <div class="info-box">
         <p><strong>Contact :</strong> ${request.requesterEmail}</p>
-        ${request.address ? `<p><strong>Adresse :</strong> ${request.address}</p>` : ''}
+        ${request.address ? `<p><strong>Adresse :</strong><br>${request.address.replace(/\n/g, '<br>')}</p>` : ''}
         ${servicesStr ? `<p><strong>Service(s) :</strong> ${servicesStr}</p>` : ''}
         ${dateStr ? `<p><strong>Date souhaitée :</strong> ${dateStr}</p>` : ''}
         ${request.description ? `<p><strong>Description :</strong> ${request.description}</p>` : ''}

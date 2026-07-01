@@ -16,5 +16,12 @@ export async function sendMail(to: string, subject: string, html: string): Promi
     to,
     subject,
     html,
+    headers: {
+      'Reply-To': 'info@gardee.fr',
+      'X-Mailer': 'Gardee',
+      'X-Priority': '3',
+      'Importance': 'normal',
+      'X-MSMail-Priority': 'Normal',
+    },
   });
 }
